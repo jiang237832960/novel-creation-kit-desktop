@@ -2,6 +2,7 @@
   "name": "novel-creation-kit-desktop",
   "version": "1.0.0",
   "description": "基于 Electron 的多智能体小说创作桌面应用",
+  "author": "Developer",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
