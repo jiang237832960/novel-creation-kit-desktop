@@ -1,0 +1,32 @@
+appId: com.novelcreationkit.desktop
+productName: Novel Creation Kit
+directories:
+  output: release
+  buildResources: public
+files:
+  - dist/**/*
+  - dist-electron/**/*
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: public/icon.png
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: public/icon.png
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: public/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: public/icon.png
+  uninstallerIcon: public/icon.png
