@@ -2,23 +2,12 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [master]
   workflow_dispatch:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            target: nsis
-          - os: macos-latest
-            target: dmg
-          - os: ubuntu-latest
-            target: AppImage
-
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -28,38 +17,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run electron:build
-        env:
-          ELECTRON_CACHE: ${{ runner.temp }}/electron-cache
-          ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-build
+          name: windows-exe
           path: release/
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release/
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: release/**/*.exe
-          draft: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
