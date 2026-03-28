@@ -20,15 +20,16 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
 const AgentFlow = [
-  { id: 'archivist', name: '档案员', icon: '📁', desc: '构建上下文' },
-  { id: 'stylist', name: '文风师', icon: '🎨', desc: '文风指南' },
-  { id: 'screenwriter', name: '编剧', icon: '✍️', desc: '场景设计' },
-  { id: 'writer', name: '写手', icon: '📝', desc: '正文写作' },
-  { id: 'wordcount', name: '字数管控', icon: '🔢', desc: '字数检查' },
-  { id: 'polisher', name: '润色师', icon: '✨', desc: '文本优化' },
-  { id: 'verifier', name: '验证官', icon: '🔍', desc: '33维度审计' },
+  { id: 'chief-director', name: '总导演', icon: '🎬', desc: '章节调度/任务拆解' },
+  { id: 'archivist', name: '档案员', icon: '📁', desc: '上下文/伏笔追踪' },
+  { id: 'stylist', name: '文风师', icon: '🎨', desc: '文风/节奏控制' },
+  { id: 'screenwriter', name: '编剧', icon: '✍️', desc: '场景/剧情/细纲' },
+  { id: 'writer', name: '写手', icon: '📝', desc: '正文初稿' },
+  { id: 'wordcount', name: '字数管控', icon: '🔢', desc: '字数监控' },
+  { id: 'polisher', name: '润色师', icon: '✨', desc: '润色/去AI痕迹' },
+  { id: 'verifier', name: '验证官', icon: '🔍', desc: '全维度校验' },
   { id: 'reviser', name: '修订师', icon: '🔧', desc: '问题修复' },
-  { id: 'learning', name: '学习代理', icon: '🧠', desc: '更新TruthFiles' },
+  { id: 'learning', name: '学习代理', icon: '🧠', desc: '经验沉淀/规则迭代' },
 ];
 
 const ProjectWorkspace: React.FC = () => {
@@ -209,7 +210,7 @@ const ProjectWorkspace: React.FC = () => {
             items={[
               {
                 key: 'workflow',
-                label: <span><ExperimentOutlined /> 9-Agent</span>,
+                label: <span><ExperimentOutlined /> 10-Agent</span>,
                 children: (
                   <div style={{ padding: 12 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

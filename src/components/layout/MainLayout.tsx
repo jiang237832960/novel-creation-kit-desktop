@@ -4,8 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined,
   FolderOutlined,
-  SettingOutlined,
   BookOutlined,
+  GlobalOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 
 const { Sider, Content } = Layout;
@@ -14,6 +15,7 @@ const { Text } = Typography;
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '工作台' },
   { key: '/projects', icon: <FolderOutlined />, label: '项目列表' },
+  { key: '/resources', icon: <GlobalOutlined />, label: '全局资源' },
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },
 ];
 
@@ -27,7 +29,11 @@ const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
         width={220}
         style={{
           background: '#001529',
-        }}
+        boxShadow: '2px 0 8px rgba(0,0,0,0.15)',
+        zIndex: 1,
+        position: 'relative',
+        overflow: 'auto',
+      }}
       >
         <div
           style={{
@@ -37,6 +43,7 @@ const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
             alignItems: 'center',
             justifyContent: 'center',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
+            background: 'linear-gradient(180deg, rgba(24,144,255,0.15) 0%, transparent 100%)',
           }}
         >
           <BookOutlined style={{ fontSize: 28, color: '#1890ff' }} />
@@ -49,11 +56,12 @@ const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
-          style={{ borderRight: 0, marginTop: 8 }}
+          style={{ borderRight: 0, marginTop: 8, background: 'transparent' }}
         />
         <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, padding: '0 12px' }}>
           <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: 6, textAlign: 'center' }}>
-            <Badge status="success" text={<Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>系统就绪</Text>} />
+            <Badge status="success" />
+            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, marginLeft: 8 }}>系统就绪</Text>
           </div>
         </div>
       </Sider>

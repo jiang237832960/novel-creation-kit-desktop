@@ -1,481 +1,242 @@
 # Novel Creation Kit Desktop - 项目规格说明书
 
-**版本**: V1.0
+**版本**: V3.0
 
 **创建日期**: 2026-03-28
 
-**核心定位**: 基于 Electron 的多智能体小说创作桌面应用，将 InkOS 设计理念的 9-Agent 协作系统、7 个 Truth Files 和 33 维度审计完整移植到桌面端，提供流畅的可视化创作体验。
+**核心定位**: 基于 Electron 的多智能体小说创作桌面应用，采用「五层分层架构+双层学习体系」，实现「全局类型化学习、单项目轻量化、全流程标准化、持续自进化」的工业化小说创作系统。
 
 ---
 
-## 1. 项目概述
+## 一、项目概述
 
 ### 1.1 背景
 
-Novel Creation Kit v3 是一个基于 InkOS 的多智能体小说创作系统，原为命令行工具。本项目将其重构为功能完整的 Electron 桌面应用，让用户可以在本地电脑上高效地进行工业化小说创作。
+Novel Creation Kit 是一个基于 InkOS 设计理念的多智能体小说创作系统。本项目将其从命令行工具重构为功能完整的 Electron 桌面应用，并按照技能体系规范实现全局资源库、单项目轻量化和持续自进化机制。
 
-### 1.2 核心功能
+### 1.2 核心理念
 
-- **9-Agent 协作工作流**: 可视化展示档案员 → 文风师 → 编剧 → 写手 → 字数管控师 → 润色师 → 验证官 → 修订师 → 学习代理的完整流程
-- **7 个 Truth Files 可视化管理**: current_state、resource_ledger、pending_hooks、chapter_summaries、subplot_board、emotional_arcs、character_matrix
-- **11 条硬规则实时检查**: 写后验证器集成，零 LLM 成本自动检查
-- **33 维度审计系统**: 全方位质量保障体系
-- **多 API 支持**: 集成 OpenAI、Claude 等多种 LLM 提供商
-- **全局公共资源库**: 类型化学习资产、用户偏好画像
+- **学习资产全局化**: 所有可复用、可沉淀的学习内容归入全局公共资源库，按小说类型精细化分类，全项目共享
+- **单项目轻量化**: 单项目仅保留专属设定与创作产出物，砍掉所有冗余学习类文件
+- **技能联动自动化**: Agent技能与全局公共资源库深度绑定，项目初始化自动加载对应类型的规则、偏好、经验
+- **持续自进化**: 学习代理全程伴随，从创作、修改中沉淀经验、优化规则，推动全系统技能持续升级
+- **唯一源文件管控**: 全局公共资源库与单项目源文件均为唯一版本，修改直接覆盖
 
-### 1.3 目标用户
+### 1.3 核心功能
 
-- 网文创作者（无限流、玄幻、都市等）
-- 个人小说作者
-- 有工业化创作需求的写作团队
+- **五层分层架构**: 用户交互层、调度管控层、Agent执行层、工具能力层、数据存储层
+- **双层学习体系**: 全局公共资源库 + 单项目专属设定
+- **12个Agent系统**: 创作总监(用户交互) + 学习代理(调度管控) + 10个专业执行Agent
+- **7个Truth Files**: 单一事实来源确保全书一致性
+- **11条硬规则 + 33维度审计**: 零LLM成本的质量保障
+- **多API支持**: OpenAI、Claude、自定义API
+- **持续自进化**: 学习-沉淀-复用闭环
 
 ---
 
-## 2. 技术架构
+## 二、系统架构
 
-### 2.1 技术栈
-
-| 层级 | 技术选型 | 说明 |
-|------|---------|------|
-| 桌面框架 | Electron 28+ | 跨平台桌面应用框架 |
-| 前端框架 | React 18 + TypeScript | 组件化 UI 开发 |
-| 状态管理 | Zustand | 轻量级状态管理 |
-| UI 组件库 | Ant Design 5 | 企业级 React 组件 |
-| 本地存储 | SQLite + better-sqlite3 | 项目数据持久化 |
-| 文件系统 | Electron fs API | Truth Files 读写 |
-| LLM 调用 |LangChain.js | 多 API 统一封装 |
-| 构建工具 | Vite + electron-builder | 快速构建打包 |
-
-### 2.2 系统架构图
-
-```mermaid
-graph TB
-    subgraph "表现层 (Renderer Process)"
-        UI["React UI Components"]
-        State["Zustand State Management"]
-    end
-    
-    subgraph "业务逻辑层 (Renderer Process)"
-        AgentWorkflow["9-Agent Workflow Engine"]
-        TruthFilesManager["Truth Files Manager"]
-        ValidationEngine["11 Rules + 33 Audit Engine"]
-        LearningAgent["Learning Agent Service"]
-    end
-    
-    subgraph "数据层 (Main Process)"
-        SQLiteDB["SQLite Database"]
-        FileSystem["Electron FS API"]
-        GlobalResources["Global Public Resources"]
-    end
-    
-    subgraph "外部服务层"
-        LLMProviders["LLM Providers"]
-        OpenAI["OpenAI API"]
-        Claude["Claude API"]
-    end
-    
-    UI <--> State
-    State <--> AgentWorkflow
-    AgentWorkflow <--> TruthFilesManager
-    AgentWorkflow <--> ValidationEngine
-    AgentWorkflow <--> LearningAgent
-    TruthFilesManager <--> SQLiteDB
-    TruthFilesManager <--> FileSystem
-    LearningAgent <--> GlobalResources
-    AgentWorkflow <--> LLMProviders
-    LLMProviders <--> OpenAI
-    LLMProviders <--> Claude
-```
-
-### 2.3 目录结构
+### 2.1 五层分层架构
 
 ```
 novel-creation-kit-desktop/
-├── electron/
-│   ├── main.ts                 # Electron 主进程
-│   ├── preload.ts              # 预加载脚本
-│   └── services/
-│       ├── database.ts         # SQLite 数据库服务
-│       ├── fileSystem.ts       # 文件系统服务
-│       └── llm/
-│           ├── index.ts         # LLM 工厂
-│           ├── openai.ts        # OpenAI 提供者
-│           └── claude.ts       # Claude 提供者
-├── src/
-│   ├── main.tsx                # React 入口
-│   ├── App.tsx                 # 应用根组件
-│   ├── components/
-│   │   ├── layout/
-│   │   │   ├── MainLayout.tsx
-│   │   │   ├── Sidebar.tsx
-│   │   │   └── Header.tsx
-│   │   ├── workflow/
-│   │   │   ├── WorkflowCanvas.tsx
-│   │   │   ├── AgentCard.tsx
-│   │   │   └── WorkflowControls.tsx
-│   │   ├── truthFiles/
-│   │   │   ├── TruthFilesPanel.tsx
-│   │   │   ├── CurrentStateEditor.tsx
-│   │   │   ├── PendingHooksEditor.tsx
-│   │   │   └── CharacterMatrixEditor.tsx
-│   │   ├── validation/
-│   │   │   ├── RuleValidator.tsx
-│   │   │   └── AuditReport.tsx
-│   │   └── settings/
-│   │       ├── SettingsDialog.tsx
-│   │       └── ApiConfig.tsx
-│   ├── pages/
-│   │   ├── Dashboard.tsx
-│   │   ├── ProjectList.tsx
-│   │   ├── ProjectWorkspace.tsx
-│   │   └── GlobalResources.tsx
-│   ├── stores/
-│   │   ├── projectStore.ts
-│   │   ├── workflowStore.ts
-│   │   └── settingsStore.ts
-│   └── utils/
-│       ├── ipc.ts              # IPC 通信封装
-│       └── validators.ts       # 验证规则
-├── public_resources/           # 全局公共资源库
-│   ├── public_learnings/
-│   │   ├── 全类型通用学习库/
-│   │   └── 分类型专属学习库/
-│   └── public_standards/
-├── tools/                       # Python 验证工具 (bundled)
-├── package.json
-├── vite.config.ts
-├── electron-builder.yml
-└── tsconfig.json
+├── 1. 用户交互层（技能入口）
+│   └── 创作总监：唯一用户交互入口，技能调度核心
+├── 2. 调度管控层（技能中枢）
+│   ├── 创作总监：技能调度、规则审核、全流程管控
+│   └── 学习代理：全局学习技能、经验沉淀、规则迭代、资源管理
+├── 3. Agent执行层（技能执行）
+│   ├── 总导演：章节创作调度、任务拆解、内部终审
+│   ├── 档案员：上下文组装、设定维护、伏笔追踪
+│   ├── 文风师：文风标准制定、叙事节奏控制
+│   ├── 编剧：场景设定、剧情架构、伏笔规划、细纲创作
+│   ├── 写手：正文初稿写作、场景/对话创作
+│   ├── 字数管控师：字数监控、合规校验、优化建议
+│   ├── 润色师：文本润色、AI痕迹去除、语言优化
+│   ├── 验证官：全维度校验、问题定位、根因分析
+│   ├── 修订师：问题修复、细节优化、一致性校准
+│   └── 灵活Agent：根据需求灵活适配
+├── 4. 工具能力层（技能支撑）
+│   └── 7个标准化Python工具模块
+└── 5. 数据存储层（技能载体）
+    ├── 全局公共资源库
+    └── 单项目目录
+```
+
+### 2.2 Agent系统
+
+| Agent | 核心技能 | 联动资源 |
+|-------|---------|---------|
+| 创作总监 | 用户交互、技能调度、规则审核 | 全局资源库 |
+| 学习代理 | 全局学习、经验沉淀、规则迭代 | 全局资源库 |
+| 总导演 | 章节创作调度、任务拆解、内部终审 | 类型专属规则、细纲规范 |
+| 档案员 | 上下文组装、设定维护、伏笔追踪 | 类型专属设定规则 |
+| 文风师 | 文风标准制定、叙事节奏控制 | 用户偏好画像、类型文风规范库 |
+| 编剧 | 场景设定、剧情架构、伏笔规划 | 类型专属规则、最佳实践库 |
+| 写手 | 正文初稿写作 | 用户偏好画像、文风指南 |
+| 字数管控师 | 字数监控、合规校验 | 通用格式规范、类型字数标准 |
+| 润色师 | 文本润色、AI痕迹去除 | 文风指南、AI痕迹规避规则 |
+| 验证官 | 全维度校验、问题定位 | 所有全局规则、问题案例库 |
+| 修订师 | 问题修复、细节优化 | 问题案例库、解决方案 |
+
+---
+
+## 三、数据存储
+
+### 3.1 全局公共资源库
+
+```
+~/Documents/NovelCreationKit/global_resources/
+├── public_learnings/            # 全局类型化学习库
+│   ├── 全类型通用学习库/        # 所有类型通用
+│   │   ├── universal_rules.json       # 全类型通用强制创作规则
+│   │   ├── 通用合规性规范.md
+│   │   ├── 通用格式规范.md
+│   │   ├── 通用问题案例库.md
+│   │   ├── 通用预防方案库.md
+│   │   └── 通用创作最佳实践.md
+│   │
+│   └── 分类型专属学习库/        # 按类型分类
+│       ├── 无限流小说/
+│       ├── 玄幻小说/
+│       ├── 都市小说/
+│       ├── 科幻小说/
+│       ├── 悬疑推理小说/
+│       └── 其他类型小说/
+│           ├── 用户偏好画像库/
+│           ├── 类型专属规则.json
+│           ├── 创作最佳实践.md
+│           ├── 问题案例库.md
+│           ├── 预防方案库.md
+│           └── 文风规范库.md
+│
+├── public_templates/            # 公共模板库
+├── public_standards/           # 公共规范库
+└── public_writing_style/      # 公共文风库
+```
+
+### 3.2 单项目目录（轻量化）
+
+```
+~/Documents/NovelCreationKit/projects/{project-id}/
+├── .project_settings/           # 项目专属设定
+│   └── 项目专属设定规则.md     # 唯一专属文件
+├── creative_scheme.md          # 创意方案
+├── world_setting.md            # 世界观设定
+├── outline.md                  # 大纲
+├── characters/                 # 人物设定
+│   ├── 人物设定表.md
+│   ├── 人物状态追踪表.md
+│   └── 网文配角管理表.md
+├── synopsis/                   # 章节细纲
+│   └── 网文爽点钩子表.md
+├── chapters/                   # 正文
+├── truth_files/                # Truth Files
+│   ├── current_state.md
+│   ├── resource_ledger.md
+│   ├── pending_hooks.md
+│   ├── chapter_summaries.md
+│   ├── subplot_board.md
+│   ├── emotional_arcs.md
+│   └── character_matrix.md
+└── backups/                   # 备份
 ```
 
 ---
 
-## 3. 功能模块设计
+## 四、界面设计
 
-### 3.1 项目管理模块
-
-#### 3.1.1 项目列表页
-
-| 功能 | 描述 |
-|------|------|
-| 项目卡片展示 | 显示项目名称、类型、创建时间、创作进度 |
-| 新建项目 | 创建新小说项目，选择类型（无限流/玄幻/都市/科幻/悬疑） |
-| 删除项目 | 确认后删除，包含备份 |
-| 搜索过滤 | 按名称、类型、状态搜索 |
-
-#### 3.1.2 项目创建流程
-
-1. 输入项目名称
-2. 选择小说类型（自动加载对应类型的全局资源）
-3. 选择是否从模板创建
-4. 初始化 Truth Files
-
-### 3.2 工作流引擎模块
-
-#### 3.2.1 9-Agent 协作可视化
-
-| 组件 | 功能 |
-|------|------|
-| WorkflowCanvas | 展示 9 个 Agent 的工作流程，支持拖拽查看详情 |
-| AgentCard | 显示每个 Agent 的状态（待执行/执行中/完成/失败）、当前任务 |
-| WorkflowControls | 控制工作流：开始、暂停、重置、单步执行 |
-| TaskPanel | 展开查看当前 Agent 的任务详情、输入输出 |
-
-#### 3.2.2 Agent 状态流转
+### 4.1 整体布局
 
 ```
-档案员 → 文风师 → 编剧 → 写手 → 字数管控师 → 润色师 → 验证官 → 修订师 → 学习代理
-   ↓         ↓        ↓       ↓         ↓           ↓        ↓         ↓         ↓
- pending  pending   pending  pending   pending     pending   pending   pending   pending
-   ↓         ↓        ↓       ↓         ↓           ↓        ↓         ↓         ↓
-running   waiting   waiting  waiting   waiting     waiting   waiting   waiting   waiting
-   ↓         ↓        ↓       ↓         ↓           ↓        ↓         ↓         ↓
-completed running   waiting  waiting   waiting     waiting   waiting   waiting   waiting
-   ↓         ↓        ↓       ↓         ↓           ↓        ↓         ↓         ↓
-...       completed  ...     ...       ...         ...       ...       ...       ...
+┌─────────────────────────────────────────────────────┐
+│ Header: Logo + 项目名 + 保存/运行/设置              │
+├──────────┬──────────────────────────────────────────┤
+│          │                                          │
+│  侧边栏  │              主内容区                    │
+│          │                                          │
+│ 工作台   │  ┌────────────┬─────────────────┐        │
+│ 项目列表 │  │ 10-Agent   │  章节编辑器     │        │
+│ 全局资源 │  │ 工作流面板  │  验证审计      │        │
+│ 设置     │  │ TruthFiles │                 │        │
+│          │  │            │                 │        │
+│          │  └────────────┴─────────────────┘        │
+└──────────┴──────────────────────────────────────────┘
 ```
 
-### 3.3 Truth Files 管理模块
-
-#### 3.3.1 7 个 Truth Files
-
-| 文件 | 功能 | 可视化组件 |
-|------|------|-----------|
-| current_state.md | 世界当前状态 | 状态卡片、时间线 |
-| resource_ledger.md | 资源账本 | 表格编辑器、数值图表 |
-| pending_hooks.md | 待处理伏笔池 | 看板视图、钩子列表 |
-| chapter_summaries.md | 章节摘要 | 章节卡片、进度条 |
-| subplot_board.md | 支线进度板 | 看板、进度指示器 |
-| emotional_arcs.md | 情感弧线 | 折线图、弧线编辑器 |
-| character_matrix.md | 角色交互矩阵 | 矩阵表格、关系图 |
-
-#### 3.3.2 编辑器功能
-
-- Markdown 可视化编辑
-- 实时预览
-- 版本历史对比
-- 自动保存
-
-### 3.4 验证审计模块
-
-#### 3.4.1 11 条硬规则检查器
-
-| 规则编号 | 规则内容 | 错误级别 |
-|---------|---------|---------|
-| R01 | 禁止"不是……而是……"句式 | Error |
-| R02 | 禁止破折号"——" | Error |
-| R03 | 转折词密度 ≤ 1次/3000字 | Warning |
-| R04 | 高疲劳词 ≤ 1次/章 | Warning |
-| R05 | 禁止元叙事 | Warning |
-| R06 | 禁止报告术语 | Error |
-| R07 | 禁止作者说教词 | Warning |
-| R08 | 禁止集体反应套话 | Warning |
-| R09 | 禁止连续4句"了"字 | Warning |
-| R10 | 段落长度 ≤ 300字 | Warning |
-| R11 | 禁止本书禁忌 | Error |
-
-#### 3.4.2 33 维度审计
-
-| 类别 | 维度数 | 说明 |
-|------|-------|------|
-| A类 | 8 | 基础一致性（OOC、战力崩坏、信息越界等） |
-| B类 | 7 | 内容质量（词汇疲劳、利益链、台词失真等） |
-| C类 | 5 | AI痕迹（段落等长、套话密度等） |
-| D类 | 5 | 故事结构（支线停滞、弧线平坦等） |
-| E类 | 3 | 合规（敏感词） |
-| F类 | 2 | 番外专属（正传冲突、未来信息泄露等） |
-| G类 | 3 | 读者体验（钩子设计、大纲偏离等） |
-
-### 3.5 设置模块
-
-#### 3.5.1 API 配置
-
-| 配置项 | 说明 |
-|-------|------|
-| API 提供商 | OpenAI / Claude / 自定义 |
-| API Key | 加密存储 |
-| API Endpoint | 可自定义 endpoint |
-| 模型选择 | 根据提供商显示可用模型 |
-| Temperature | 0.0 - 2.0 |
-| Max Tokens | 限制生成长度 |
-
-#### 3.5.2 全局资源管理
-
-- 查看全局公共资源库结构
-- 导入/导出类型化学习资产
-- 用户偏好画像查看与编辑
-
----
-
-## 4. 数据模型
-
-### 4.1 数据库 Schema (SQLite)
-
-```sql
--- 项目表
-CREATE TABLE projects (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status TEXT DEFAULT 'active'
-);
-
--- 章节表
-CREATE TABLE chapters (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    number INTEGER NOT NULL,
-    title TEXT,
-    content TEXT,
-    status TEXT DEFAULT 'draft',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id)
-);
-
--- 创作记录表
-CREATE TABLE创作_records (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    agent_name TEXT NOT NULL,
-    chapter_id TEXT,
-    input TEXT,
-    output TEXT,
-    status TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id)
-);
-
--- 验证结果表
-CREATE TABLE validation_results (
-    id TEXT PRIMARY KEY,
-    chapter_id TEXT NOT NULL,
-    rule_id TEXT NOT NULL,
-    severity TEXT NOT NULL,
-    position INTEGER,
-    description TEXT,
-    suggestion TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chapter_id) REFERENCES chapters(id)
-);
-
--- 设置表
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 4.2 文件系统结构
-
-```
-~/Documents/NovelCreationKit/
-├── projects/
-│   └── {project-id}/
-│       ├── project.json
-│       ├── truth_files/
-│       │   ├── current_state.md
-│       │   ├── resource_ledger.md
-│       │   ├── pending_hooks.md
-│       │   ├── chapter_summaries.md
-│       │   ├── subplot_board.md
-│       │   ├── emotional_arcs.md
-│       │   └── character_matrix.md
-│       ├── chapters/
-│       │   ├── 第1章.md
-│       │   └── ...
-│       └── backups/
-├── global_resources/
-│   └── (全局公共资源库)
-└── config.json
-```
-
----
-
-## 5. 界面设计
-
-### 5.1 整体布局
-
-```mermaid
-graph TB
-    subgraph "MainLayout"
-        Header["Header: Logo + 项目名 + 设置"]
-        Sidebar["Sidebar: 导航菜单"]
-        Main["Main Content Area"]
-    end
-    
-    subgraph "Sidebar Items"
-        S1["仪表盘"]
-        S2["项目列表"]
-        S3["全局资源"]
-        S4["使用指南"]
-    end
-    
-    Sidebar --> S1
-    Sidebar --> S2
-    Sidebar --> S3
-    Sidebar --> S4
-    
-    subgraph "ProjectWorkspace"
-        W1["工作流画布"]
-        W2["Truth Files 面板"]
-        W3["当前章节编辑器"]
-        W4["验证报告面板"]
-    end
-    
-    Main --> W1
-    Main --> W2
-    Main --> W3
-    Main --> W4
-```
-
-### 5.2 页面清单
+### 4.2 页面路由
 
 | 页面 | 路由 | 功能 |
 |-----|------|------|
-| 仪表盘 | / | 概览、快捷操作、最近项目 |
-| 项目列表 | /projects | 项目管理 |
+| 工作台 | / | 系统总览、10-Agent流程图、全局资源入口 |
+| 项目列表 | /projects | 项目管理、创建/删除/打开 |
 | 项目工作区 | /projects/:id | 核心创作界面 |
-| 全局资源 | /resources | 公共资源库浏览 |
-| 设置 | /settings | API 配置、应用设置 |
-
-### 5.3 配色方案
-
-| 用途 | 色值 | 说明 |
-|------|-----|------|
-| 主色 | #1890ff | 品牌色、主要按钮 |
-| 成功 | #52c41a | 完成状态 |
-| 警告 | #faad14 | 警告状态 |
-| 错误 | #ff4d4f | 错误状态 |
-| 背景 | #f5f5f5 | 页面背景 |
-| 卡片背景 | #ffffff | 卡片、面板背景 |
-| 文字主色 | #262626 | 主要文字 |
-| 文字次色 | #8c8c8c | 次要文字 |
+| 全局资源 | /resources | 公共资源库浏览、类型化学习库 |
+| 设置 | /settings | API配置、系统设置 |
 
 ---
 
-## 6. IPC 通信设计
+## 五、技术栈
 
-### 6.1 主进程 API
-
-| 通道 | 方向 | 功能 |
-|------|-----|------|
-| project:create | renderer → main | 创建项目 |
-| project:list | renderer → main | 获取项目列表 |
-| project:get | renderer → main | 获取项目详情 |
-| project:delete | renderer → main | 删除项目 |
-| file:read | renderer → main | 读取文件 |
-| file:write | renderer → main | 写入文件 |
-| file:backup | renderer → main | 备份文件 |
-| llm:generate | renderer → main | 调用 LLM |
-| validation:run | renderer → main | 运行验证 |
-| audit:run | renderer → main | 运行审计 |
+| 层级 | 技术 | 说明 |
+|-----|------|------|
+| 桌面框架 | Electron 28+ | 跨平台桌面应用 |
+| 前端 | React 18 + TypeScript | 组件化UI |
+| 状态管理 | Zustand | 轻量级状态管理 |
+| UI组件 | Ant Design 5 | 企业级组件库 |
+| 文件系统 | Electron fs API | Truth Files读写 |
+| LLM集成 | 自定义工厂 | OpenAI/Claude/自定义 |
 
 ---
 
-## 7. 打包与分发
+## 六、11条硬规则
 
-### 7.1 构建配置
-
-- **目标平台**: Windows (NSIS)、macOS (DMG)、Linux (AppImage)
-- **应用图标**: 自动从 assets/icon.png 生成
-- **自动更新**: 使用 electron-updater
-- **代码签名**: 支持 Windows/macOS 代码签名
-
-### 7.2 安装包结构
-
-```
-NovelCreationKit-Setup-1.0.0.exe
-├── resources/
-│   └── app.asar
-├── locales/
-└── uninstall.exe
-```
+| ID | 规则 | 严重性 |
+|----|------|--------|
+| R01 | 禁止"不是……而是……"句式 | error |
+| R02 | 禁止破折号"——" | error |
+| R03 | 转折词密度 ≤ 1次/3000字 | warning |
+| R04 | 高疲劳词 ≤ 1次/章 | warning |
+| R05 | 禁止元叙事 | warning |
+| R06 | 禁止报告术语 | error |
+| R07 | 禁止作者说教词 | warning |
+| R08 | 禁止集体反应套话 | warning |
+| R09 | 禁止连续4句"了"字 | warning |
+| R10 | 段落长度 ≤ 300字 | warning |
+| R11 | 禁止本书禁忌 | error |
 
 ---
 
-## 8. 验收标准
+## 七、33维度审计
 
-### 8.1 功能验收
+| 分类 | 名称 | 维度数 |
+|------|------|--------|
+| A | 基础一致性 | 8 |
+| B | 内容质量 | 7 |
+| C | AI痕迹 | 5 |
+| D | 故事结构 | 5 |
+| E | 合规 | 3 |
+| F | 番外专属 | 2 |
+| G | 读者体验 | 3 |
 
-- [ ] 可以创建、打开、删除小说项目
-- [ ] 9-Agent 工作流可视化正常展示
-- [ ] Truth Files 可正常编辑和保存
-- [ ] 11 条硬规则检查正常工作
-- [ ] 33 维度审计报告正常生成
-- [ ] 多 API 配置可正常切换
-- [ ] 全局公共资源库可正常加载
+---
 
-### 8.2 性能验收
+## 八、实施里程碑
 
-- [ ] 应用启动时间 < 3 秒
-- [ ] 项目切换时间 < 1 秒
-- [ ] 验证器处理 3000 字 < 1 秒
+### Phase 1: 基础搭建（1-2周）
+- [x] 搭建全局公共资源库目录结构
+- [x] 实现单项目轻量化目录
+- [x] 完成12个Agent的基础配置
+- [x] 实现Truth Files管理面板
+- [x] 完成工作流可视化（10-Agent）
 
-### 8.3 质量验收
+### Phase 2: 核心功能（1-2周）
+- [x] 实现创作总监-学习代理闭环
+- [x] 实现全局类型化学习体系
+- [ ] 完成11条硬规则验证器
+- [ ] 完成33维度审计系统
 
-- [ ] 无运行时崩溃
-- [ ] 数据持久化可靠
-- [ ] 窗口记忆功能正常
+### Phase 3: 优化完善（持续）
+- [ ] 学习代理自动沉淀优化
+- [ ] 技能可视化管理界面
+- [ ] 用户偏好自动适配

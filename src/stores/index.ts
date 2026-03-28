@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Project, Chapter, LLMConfig, Agent, TruthFile, ValidationResult, AuditResult } from '../types';
+import type { Project, Chapter, LLMConfig, Agent, TruthFile, ValidationResult, AuditResult, NovelType, GlobalLearningResource, UserPreference, ProblemCase, BestPractice } from '../types';
+import { NOVEL_TYPES, AGENTS, HARD_RULES } from '../types';
 
 interface ProjectState {
   projects: Project[];
@@ -26,7 +27,7 @@ interface ProjectState {
 
 export const useProjectStore = create<ProjectState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       projects: [],
       currentProject: null,
       chapters: [],
@@ -125,18 +126,13 @@ interface WorkflowState {
   resetWorkflow: () => void;
 }
 
+const initialAgents: Agent[] = AGENTS.map(a => ({
+  ...a,
+  status: 'pending' as const,
+}));
+
 export const useWorkflowStore = create<WorkflowState>()((set) => ({
-  agents: [
-    { id: 'archivist', name: 'Archivist', nameCn: '档案员', status: 'pending', description: '构建上下文，维护设定与伏笔' },
-    { id: 'stylist', name: 'Stylist', nameCn: '文风师', status: 'pending', description: '分析文风，制定风格指南' },
-    { id: 'screenwriter', name: 'Screenwriter', nameCn: '编剧', status: 'pending', description: '设计场景，规划剧情' },
-    { id: 'writer', name: 'Writer', nameCn: '写手', status: 'pending', description: '正文初稿写作' },
-    { id: 'wordcount', name: 'WordCount', nameCn: '字数管控师', status: 'pending', description: '字数监控与合规校验' },
-    { id: 'polisher', name: 'Polisher', nameCn: '润色师', status: 'pending', description: '文本润色与AI痕迹去除' },
-    { id: 'verifier', name: 'Verifier', nameCn: '验证官', status: 'pending', description: '33维度审计' },
-    { id: 'reviser', name: 'Reviser', nameCn: '修订师', status: 'pending', description: '问题修复与细节优化' },
-    { id: 'learning', name: 'Learning', nameCn: '学习代理', status: 'pending', description: '沉淀经验，更新Truth Files' },
-  ],
+  agents: initialAgents,
   currentAgentIndex: 0,
   isRunning: false,
   isPaused: false,
@@ -150,12 +146,13 @@ export const useWorkflowStore = create<WorkflowState>()((set) => ({
   setIsRunning: (running) => set({ isRunning: running }),
   setIsPaused: (paused) => set({ isPaused: paused }),
   addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
-  resetWorkflow: () => set((state) => ({
-    agents: state.agents.map((a) => ({ ...a, status: 'pending' as const, currentTask: undefined, output: undefined, error: undefined })),
+  resetWorkflow: () => set({
+    agents: initialAgents.map(a => ({ ...a, status: 'pending' as const })),
     currentAgentIndex: 0,
     isRunning: false,
     isPaused: false,
-  })),
+    logs: [],
+  }),
 }));
 
 interface ValidationState {
@@ -180,27 +177,59 @@ export const useValidationStore = create<ValidationState>()((set) => ({
   clearResults: () => set({ validationResults: [], auditResult: null }),
 }));
 
-interface TruthFilesState {
-  truthFiles: TruthFile[];
-  activeFile: TruthFile | null;
-  isDirty: boolean;
+interface GlobalResourcesState {
+  globalPath: string;
+  selectedType: NovelType | '全部';
+  resources: GlobalLearningResource[];
+  userPreferences: UserPreference[];
+  problemCases: ProblemCase[];
+  bestPractices: BestPractice[];
   
-  setTruthFiles: (files: TruthFile[]) => void;
-  updateTruthFile: (name: string, updates: Partial<TruthFile>) => void;
-  setActiveFile: (file: TruthFile | null) => void;
-  setIsDirty: (dirty: boolean) => void;
+  setGlobalPath: (path: string) => void;
+  setSelectedType: (type: NovelType | '全部') => void;
+  setResources: (resources: GlobalLearningResource[]) => void;
+  addResource: (resource: GlobalLearningResource) => void;
+  updateResource: (id: string, updates: Partial<GlobalLearningResource>) => void;
+  removeResource: (id: string) => void;
+  setUserPreferences: (preferences: UserPreference[]) => void;
+  addProblemCase: (problem: ProblemCase) => void;
+  updateProblemCase: (id: string, updates: Partial<ProblemCase>) => void;
+  addBestPractice: (practice: BestPractice) => void;
+  updateBestPractice: (id: string, updates: Partial<BestPractice>) => void;
 }
 
-export const useTruthFilesStore = create<TruthFilesState>()((set) => ({
-  truthFiles: [],
-  activeFile: null,
-  isDirty: false,
-  
-  setTruthFiles: (files) => set({ truthFiles: files }),
-  updateTruthFile: (name, updates) => set((state) => ({
-    truthFiles: state.truthFiles.map((f) => f.name === name ? { ...f, ...updates } : f),
-    activeFile: state.activeFile?.name === name ? { ...state.activeFile, ...updates } : state.activeFile,
-  })),
-  setActiveFile: (file) => set({ activeFile: file, isDirty: false }),
-  setIsDirty: (dirty) => set({ isDirty: dirty }),
-}));
+export const useGlobalResourcesStore = create<GlobalResourcesState>()(
+  persist(
+    (set) => ({
+      globalPath: '',
+      selectedType: '全部',
+      resources: [],
+      userPreferences: [],
+      problemCases: [],
+      bestPractices: [],
+      
+      setGlobalPath: (path) => set({ globalPath: path }),
+      setSelectedType: (type) => set({ selectedType: type }),
+      setResources: (resources) => set({ resources }),
+      addResource: (resource) => set((state) => ({ resources: [...state.resources, resource] })),
+      updateResource: (id, updates) => set((state) => ({
+        resources: state.resources.map((r) => r.id === id ? { ...r, ...updates } : r),
+      })),
+      removeResource: (id) => set((state) => ({
+        resources: state.resources.filter((r) => r.id !== id),
+      })),
+      setUserPreferences: (preferences) => set({ userPreferences: preferences }),
+      addProblemCase: (problem) => set((state) => ({ problemCases: [...state.problemCases, problem] })),
+      updateProblemCase: (id, updates) => set((state) => ({
+        problemCases: state.problemCases.map((p) => p.id === id ? { ...p, ...updates } : p),
+      })),
+      addBestPractice: (practice) => set((state) => ({ bestPractices: [...state.bestPractices, practice] })),
+      updateBestPractice: (id, updates) => set((state) => ({
+        bestPractices: state.bestPractices.map((p) => p.id === id ? { ...p, ...updates } : p),
+      })),
+    }),
+    {
+      name: 'novel-creation-kit-global-resources',
+    }
+  )
+);

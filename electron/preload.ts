@@ -4,6 +4,8 @@ const electronAPI = {
   // 路径
   getUserDocumentsPath: () => ipcRenderer.invoke('get-user-documents-path'),
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
+  getGlobalResourcesPath: () => ipcRenderer.invoke('get-global-resources-path'),
+  getProjectsPath: () => ipcRenderer.invoke('get-projects-path'),
   
   // 项目管理
   createProject: (projectPath: string) => ipcRenderer.invoke('create-project', projectPath),
@@ -26,6 +28,9 @@ const electronAPI = {
   // 设置存储
   storeGet: (key: string) => ipcRenderer.invoke('store-get', key),
   storeSet: (key: string, value: unknown) => ipcRenderer.invoke('store-set', key, value),
+  
+  // 全局资源
+  initGlobalResources: (basePath: string) => ipcRenderer.invoke('init-global-resources', basePath),
   
   // 菜单事件
   onMenuNewProject: (callback: () => void) => {

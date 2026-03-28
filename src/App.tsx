@@ -3,6 +3,7 @@ import MainLayout from './components/layout/MainLayout';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectWorkspace from './pages/ProjectWorkspace';
+import GlobalResources from './pages/GlobalResources';
 import Settings from './pages/Settings';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<ProjectList />} />
         <Route path="projects/:id" element={<ProjectWorkspace />} />
+        <Route path="resources" element={<GlobalResources />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

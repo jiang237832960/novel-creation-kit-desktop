@@ -255,15 +255,16 @@ export class WorkflowEngine {
 
   private initAgents(): void {
     this.agents = [
-      { id: 'archivist', name: 'Archivist', nameCn: '档案员', status: 'pending', description: '构建上下文，维护设定与伏笔' },
-      { id: 'stylist', name: 'Stylist', nameCn: '文风师', status: 'pending', description: '分析文风，制定风格指南' },
-      { id: 'screenwriter', name: 'Screenwriter', nameCn: '编剧', status: 'pending', description: '设计场景，规划剧情' },
-      { id: 'writer', name: 'Writer', nameCn: '写手', status: 'pending', description: '正文初稿写作' },
-      { id: 'wordcount', name: 'WordCount', nameCn: '字数管控师', status: 'pending', description: '字数监控与合规校验' },
-      { id: 'polisher', name: 'Polisher', nameCn: '润色师', status: 'pending', description: '文本润色与AI痕迹去除' },
-      { id: 'verifier', name: 'Verifier', nameCn: '验证官', status: 'pending', description: '33维度审计' },
-      { id: 'reviser', name: 'Reviser', nameCn: '修订师', status: 'pending', description: '问题修复与细节优化' },
-      { id: 'learning', name: 'Learning', nameCn: '学习代理', status: 'pending', description: '沉淀经验，更新Truth Files' },
+      { id: 'chief-director', name: 'ChiefDirector', nameCn: '总导演', status: 'pending', description: '章节创作调度、任务拆解、内部终审' },
+      { id: 'archivist', name: 'Archivist', nameCn: '档案员', status: 'pending', description: '上下文组装、设定维护、伏笔追踪' },
+      { id: 'stylist', name: 'Stylist', nameCn: '文风师', status: 'pending', description: '文风标准制定、叙事节奏控制' },
+      { id: 'screenwriter', name: 'Screenwriter', nameCn: '编剧', status: 'pending', description: '场景设定、剧情架构、伏笔规划、细纲创作' },
+      { id: 'writer', name: 'Writer', nameCn: '写手', status: 'pending', description: '正文初稿写作、场景/对话创作' },
+      { id: 'wordcount', name: 'WordCount', nameCn: '字数管控师', status: 'pending', description: '字数监控、合规校验、优化建议' },
+      { id: 'polisher', name: 'Polisher', nameCn: '润色师', status: 'pending', description: '文本润色、AI痕迹去除、语言优化' },
+      { id: 'verifier', name: 'Verifier', nameCn: '验证官', status: 'pending', description: '全维度校验、问题定位、根因分析' },
+      { id: 'reviser', name: 'Reviser', nameCn: '修订师', status: 'pending', description: '问题修复、细节优化、一致性校准' },
+      { id: 'learning', name: 'Learning', nameCn: '学习代理', status: 'pending', description: '沉淀经验、更新TruthFiles、规则迭代' },
     ];
   }
 
@@ -405,15 +406,16 @@ export class WorkflowEngine {
 
   private getAgentSystemPrompt(agent: Agent): string {
     const prompts: Record<string, string> = {
-      archivist: '你是档案员，负责构建创作上下文，维护设定与伏笔。读取并整理项目设定、人物状态、世界规则等信息，为后续创作提供准确的基础数据。',
-      stylist: '你是文风师，负责分析并制定文风指南。根据用户偏好和作品类型，制定章节的文风标准，包括语气、句式、节奏等方面的指导。',
-      screenwriter: '你是编剧，负责场景设计和剧情架构。设计具体场景，规划情节发展，埋设伏笔，确保故事线清晰有趣。',
-      writer: '你是写手，负责正文初稿写作。基于细纲和上下文，创作符合要求的正文内容。',
-      wordcount: '你是字数管控师，负责字数监控与合规校验。检查章节字数是否符合要求，提供优化建议。',
-      polisher: '你是润色师，负责文本润色与AI痕迹去除。优化语言表达，去除生硬表达，增强阅读体验。',
-      verifier: '你是验证官，负责33维度审计。全面检查内容质量、一致性、逻辑性等问题。',
-      reviser: '你是修订师，负责问题修复与细节优化。根据验证结果修复问题，优化内容细节。',
-      learning: '你是学习代理，负责沉淀经验与更新设定。总结本次创作的经验教训，更新Truth Files。',
+      'chief-director': '你是总导演，负责章节创作调度、任务拆解与内部终审。基于编剧创作的细纲与全局规则、网文节奏标准，拆解章节创作任务，调度档案员、文风师、写手等后续Agent执行对应技能，统筹章节创作全流程，把控网文更新节奏与章节断更应急处理，完成章节内部终审，确保各Agent技能执行衔接顺畅、符合全局规则、细纲要求及网文节奏规范。',
+      archivist: '你是档案员，负责上下文组装、设定维护与伏笔追踪。基于全局设定规则、网文专属规范与编剧创作的场景、细纲，组装项目上下文，维护人物状态与伏笔；配合编剧的伏笔规划、爽点设计，记录所有角色的状态变动轨迹、伏笔铺设与回收情况，为写手、润色师提供准确参考，确保设定、人物、伏笔的一致性。',
+      stylist: '你是文风师，负责文风标准制定与叙事节奏控制。基于用户偏好、网文文风规范与类型文风规范，制定章节文风指南（适配网文口语化、短句节奏、情绪渲染需求），控制网文章节节奏（开头钩子、中间爽点、结尾留坑），确保文风贴合网文读者阅读习惯。',
+      screenwriter: '你是编剧，负责场景设定、剧情架构、伏笔规划与细纲创作。完成小说场景设定（含场景细节、氛围适配），搭建剧情架构，规划伏笔铺设与网文爽点设计，同时创作细纲——作为大纲的细分展开，具体到每一个章节的内容分配、爽点位置、钩子设计、节奏把控。将场景设定、伏笔规划、爽点设计同步给档案员，为总导演拆解任务提供依据。',
+      writer: '你是写手，负责正文初稿写作与场景/对话创作。基于编剧创作的细纲、爽点钩子设计，档案员提供的上下文、人物/伏笔追踪信息，结合文风师制定的网文适配文风指南，完成正文初稿，贴合用户偏好与类型风格，突出网文爽点、强化情绪渲染，控制短句节奏。',
+      wordcount: '你是字数管控师，负责字数监控与合规校验。基于全局字数标准、网文更新规范，监控正文章字数，结合网文日/周更新计划，提出字数分配优化建议，确保单章节字数达标、更新节奏稳定，同时规避字数冗余。',
+      polisher: '你是润色师，负责文本润色、AI痕迹去除与语言优化。基于文风指南、网文文风规范与写手提交的正文初稿，润色文本、去除AI痕迹、优化语言表达，强化网文情绪渲染与短句节奏，保留爽点冲击力，同时参考档案员维护的人物状态、场景设定信息。',
+      verifier: '你是验证官，负责全维度校验、问题定位与根因分析。基于全局规则、网文专属规范与问题案例库，执行全维度校验，定位问题根因，匹配解决方案。重点负责跨章节内容的语义雷同检测、网文爽点密度校验、钩子合理性校验，识别重复内容、冗余表述、爽点不足、钩子无效等问题。',
+      reviser: '你是修订师，负责问题修复、细节优化与一致性校准。基于验证官出具的校验报告，修复语义雷同、设定不一致、爽点不足、钩子无效等问题，优化内容细节与网文节奏。同步对接档案员，根据问题修复情况更新人物状态、伏笔等相关追踪表，确保内容与设定一致。',
+      learning: '你是学习代理，负责沉淀经验与规则迭代。从项目创作中提取可复用经验，统计问题频次，优化技能规则与预防方案，更新用户偏好画像，确保同类型项目自动适配。全局公共资源库与单项目源文件均为唯一版本，修改直接覆盖，确保内容与技能规则的一致性。',
     };
     return prompts[agent.id] || '执行对应任务';
   }
