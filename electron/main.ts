@@ -1181,6 +1181,102 @@ ipcMain.handle('init-global-resources', async (_, basePath: string) => {
 `, 'utf-8');
     }
 
+    // 创建各类型专属规则文件
+    const novelTypes = ['无限流小说', '玄幻小说', '都市小说', '科幻小说', '悬疑推理小说', '其他类型小说'];
+    
+    for (const typeName of novelTypes) {
+      const typePath = path.join(globalPath, 'public_learnings', '分类型专属学习库', typeName);
+      
+      // 类型专属规则.json
+      const rulesPath = path.join(typePath, '类型专属规则.json');
+      if (!fs.existsSync(rulesPath)) {
+        fs.writeFileSync(rulesPath, JSON.stringify({
+          version: '1.0',
+          type: typeName,
+          rules: [
+            { id: `${typeName.substring(0, 2)}R01`, rule: `${typeName}专属规则1`, severity: 'error' },
+            { id: `${typeName.substring(0, 2)}R02`, rule: `${typeName}专属规则2`, severity: 'warning' },
+          ],
+          updateAt: new Date().toISOString(),
+        }, null, 2), 'utf-8');
+      }
+      
+      // 创作最佳实践.md
+      const practicePath = path.join(typePath, '创作最佳实践.md');
+      if (!fs.existsSync(practicePath)) {
+        fs.writeFileSync(practicePath, `# ${typeName}创作最佳实践
+
+## 类型特点
+- 
+
+## 创作技巧
+- 
+
+## 优质案例
+- 
+
+## 常见问题
+- 
+`, 'utf-8');
+      }
+      
+      // 问题案例库.md
+      const problemPath = path.join(typePath, '问题案例库.md');
+      if (!fs.existsSync(problemPath)) {
+        fs.writeFileSync(problemPath, `# ${typeName}问题案例库
+
+## 高频问题
+
+### 问题1
+- **描述**：
+- **出现频次**：
+- **根因**：
+- **解决方案**：
+
+## 问题统计
+
+| 问题类型 | 出现频次 | 严重程度 |
+|---------|---------|---------|
+`, 'utf-8');
+      }
+      
+      // 预防方案库.md
+      const preventionPath = path.join(typePath, '预防方案库.md');
+      if (!fs.existsSync(preventionPath)) {
+        fs.writeFileSync(preventionPath, `# ${typeName}预防方案库
+
+## 问题前置预防措施
+
+### 预防措施1
+- **针对问题**：
+- **预防方法**：
+- **执行时机**：
+
+## 预防清单
+- [ ] 
+`, 'utf-8');
+      }
+      
+      // 文风规范库.md
+      const styleGuidePath = path.join(typePath, '文风规范库.md');
+      if (!fs.existsSync(styleGuidePath)) {
+        fs.writeFileSync(styleGuidePath, `# ${typeName}文风规范
+
+## 文风特点
+- 
+
+## 语言风格
+- 
+
+## 句式特点
+- 
+
+## 节奏把控
+- 
+`, 'utf-8');
+      }
+    }
+
     return { success: true, globalPath };
   } catch (error) {
     return { success: false, error: String(error) };

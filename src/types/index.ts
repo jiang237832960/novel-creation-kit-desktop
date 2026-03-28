@@ -82,17 +82,17 @@ export interface Agent {
 
 export type AgentId = 
   | 'creative-director'    // 创作总监
-  | 'learning-agent'      // 学习代理
-  | 'chief-director'       // 总导演
-  | 'archivist'           // 档案员
-  | 'stylist'            // 文风师
-  | 'screenwriter'        // 编剧
-  | 'writer'             // 写手
-  | 'wordcount'          // 字数管控师
-  | 'polisher'           // 润色师
-  | 'verifier'           // 验证官
-  | 'reviser'            // 修订师
-  | 'learning';          // 学习代理
+  | 'learning-agent'     // 学习代理（调度管控层）
+  | 'chief-director'      // 总导演
+  | 'archivist'          // 档案员
+  | 'stylist'           // 文风师
+  | 'screenwriter'       // 编剧
+  | 'writer'            // 写手
+  | 'wordcount'         // 字数管控师
+  | 'polisher'          // 润色师
+  | 'verifier'          // 验证官
+  | 'reviser'           // 修订师
+  | 'flexible-agent';   // 灵活Agent（根据需求适配）
 
 export interface ValidationResult {
   ruleId: string;
@@ -227,20 +227,20 @@ export const AUDIT_DIMENSIONS = {
   G: { name: '读者体验', count: 3, dims: ['钩子设计', '大纲偏离', '阅读疲劳'] },
 };
 
-// Agent 列表配置
+// Agent 列表配置（12个Agent）
 export const AGENTS: Omit<Agent, 'status' | 'currentTask' | 'input' | 'output' | 'error' | 'startTime' | 'endTime'>[] = [
-  { id: 'creative-director', name: 'CreativeDirector', nameCn: '创作总监', description: '唯一用户交互入口，技能调度核心' },
-  { id: 'learning-agent', name: 'LearningAgent', nameCn: '学习代理', description: '全局学习技能、经验沉淀' },
-  { id: 'chief-director', name: 'ChiefDirector', nameCn: '总导演', description: '章节创作调度、任务拆解' },
-  { id: 'archivist', name: 'Archivist', nameCn: '档案员', description: '上下文组装、设定维护' },
-  { id: 'stylist', name: 'Stylist', nameCn: '文风师', description: '文风标准制定、叙事节奏控制' },
-  { id: 'screenwriter', name: 'Screenwriter', nameCn: '编剧', description: '场景设定、剧情架构' },
-  { id: 'writer', name: 'Writer', nameCn: '写手', description: '正文初稿写作' },
-  { id: 'wordcount', name: 'WordCount', nameCn: '字数管控师', description: '字数监控、合规校验' },
-  { id: 'polisher', name: 'Polisher', nameCn: '润色师', description: '文本润色、AI痕迹去除' },
-  { id: 'verifier', name: 'Verifier', nameCn: '验证官', description: '全维度校验、问题定位' },
-  { id: 'reviser', name: 'Reviser', nameCn: '修订师', description: '问题修复、细节优化' },
-  { id: 'learning', name: 'Learning', nameCn: '学习代理', description: '沉淀经验、更新TruthFiles' },
+  { id: 'creative-director', name: 'CreativeDirector', nameCn: '创作总监', description: '唯一用户交互入口，技能调度核心，负责技能规则同步与用户需求适配' },
+  { id: 'learning-agent', name: 'LearningAgent', nameCn: '学习代理', description: '全局学习技能、经验沉淀、规则迭代、资源管理' },
+  { id: 'chief-director', name: 'ChiefDirector', nameCn: '总导演', description: '章节创作调度、任务拆解、内部终审，把控更新节奏' },
+  { id: 'archivist', name: 'Archivist', nameCn: '档案员', description: '上下文组装、设定维护、伏笔追踪、网文配角管理' },
+  { id: 'stylist', name: 'Stylist', nameCn: '文风师', description: '文风标准制定、叙事节奏控制、网文节奏适配' },
+  { id: 'screenwriter', name: 'Screenwriter', nameCn: '编剧', description: '场景设定、剧情架构、伏笔规划、细纲创作、爽点设计' },
+  { id: 'writer', name: 'Writer', nameCn: '写手', description: '正文初稿写作、场景/对话创作，突出爽点' },
+  { id: 'wordcount', name: 'WordCount', nameCn: '字数管控师', description: '字数监控、合规校验、优化建议' },
+  { id: 'polisher', name: 'Polisher', nameCn: '润色师', description: '文本润色、AI痕迹去除、语言优化' },
+  { id: 'verifier', name: 'Verifier', nameCn: '验证官', description: '全维度校验、问题定位、根因分析、语义雷同检测' },
+  { id: 'reviser', name: 'Reviser', nameCn: '修订师', description: '问题修复、细节优化、一致性校准' },
+  { id: 'flexible-agent', name: 'FlexibleAgent', nameCn: '灵活Agent', description: '根据具体创作需求灵活适配' },
 ];
 
 // 7个 Truth Files
