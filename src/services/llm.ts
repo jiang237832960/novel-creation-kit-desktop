@@ -1,4 +1,5 @@
 import type { LLMConfig, Agent } from '../types';
+import { zeroTokenService } from './zeroToken';
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
@@ -185,6 +186,52 @@ class CustomProvider implements LLMProvider {
   }
 }
 
+class ZeroTokenProvider implements LLMProvider {
+  name = 'Zero Token';
+
+  async sendMessage(messages: LLMMessage[], config: Partial<LLMConfig>): Promise<LLMResponse> {
+    const { model, temperature, maxTokens } = config;
+    
+    if (!zeroTokenService.isConfigured()) {
+      const result = await zeroTokenService.fetchModels();
+      if (!result.success || !result.providers?.length) {
+        return { success: false, error: 'Zero Token 网关未配置或无可用模型' };
+      }
+    }
+
+    const chatMessages = messages.map(m => ({
+      id: `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+      timestamp: new Date().toISOString(),
+    }));
+
+    const result = await zeroTokenService.sendMessage(
+      chatMessages,
+      model || zeroTokenService.getActiveModel(),
+      { temperature, maxTokens }
+    );
+
+    return {
+      success: result.success,
+      content: result.content,
+      error: result.error,
+      usage: result.usage,
+    };
+  }
+
+  getModels(): string[] {
+    const models: string[] = [];
+    const providers = zeroTokenService.getAvailableProviders();
+    for (const provider of providers) {
+      for (const model of provider.models) {
+        models.push(`${provider.id}/${model.id}`);
+      }
+    }
+    return models.length > 0 ? models : ['deepseek-web/deepseek-chat', 'claude-web/claude-sonnet-4-6'];
+  }
+}
+
 class LLMService {
   private providers: Map<string, LLMProvider> = new Map();
   private currentProvider: LLMProvider;
@@ -194,6 +241,7 @@ class LLMService {
     this.providers.set('openai', new OpenAIProvider());
     this.providers.set('claude', new ClaudeProvider());
     this.providers.set('custom', new CustomProvider());
+    this.providers.set('zero-token', new ZeroTokenProvider());
     
     this.currentProvider = this.providers.get('openai')!;
     
@@ -233,6 +281,9 @@ class LLMService {
   }
 
   isConfigured(): boolean {
+    if (this.config.provider === 'zero-token') {
+      return zeroTokenService.isConfigured();
+    }
     if (!this.config.apiKey) return false;
     if (this.config.provider === 'custom' && !this.config.endpoint) return false;
     return true;

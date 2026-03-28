@@ -9,6 +9,7 @@ import {
   ArrowRightOutlined,
   BookOutlined,
   MessageOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import AIChatPanel from '../components/chat/AIChatPanel';
 
@@ -230,6 +231,15 @@ const Dashboard: React.FC = () => {
                 onClick={() => navigate('/projects')}
               >
                 打开现有项目
+              </Button>
+              <Button
+                size="large"
+                block
+                icon={<ThunderboltOutlined />}
+                onClick={() => navigate('/chat')}
+                style={{ background: '#faad14', borderColor: '#faad14', color: '#fff' }}
+              >
+                Zero Token 免费聊天
               </Button>
             </Space>
           </Card>

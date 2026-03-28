@@ -5,6 +5,8 @@ import ProjectList from './pages/ProjectList';
 import ProjectWorkspace from './pages/ProjectWorkspace';
 import GlobalResources from './pages/GlobalResources';
 import Settings from './pages/Settings';
+import ZeroTokenSettings from './pages/ZeroTokenSettings';
+import ZeroTokenChat from './pages/ZeroTokenChat';
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
         <Route path="projects/:id" element={<ProjectWorkspace />} />
         <Route path="resources" element={<GlobalResources />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="settings/zero-token" element={<ZeroTokenSettings />} />
+        <Route path="chat" element={<ZeroTokenChat />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

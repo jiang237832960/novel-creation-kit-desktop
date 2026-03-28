@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { Layout, Menu, Typography, Badge } from 'antd';
+import { Layout, Menu, Typography, Badge, Tag } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined,
@@ -7,6 +7,7 @@ import {
   BookOutlined,
   GlobalOutlined,
   SettingOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 
 const { Sider, Content } = Layout;
@@ -14,6 +15,7 @@ const { Text } = Typography;
 
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '工作台' },
+  { key: '/chat', icon: <ThunderboltOutlined />, label: <><span>Zero聊天</span><Tag color="gold" style={{ marginLeft: 6, fontSize: 10 }}>免费</Tag></> },
   { key: '/projects', icon: <FolderOutlined />, label: '项目列表' },
   { key: '/resources', icon: <GlobalOutlined />, label: '全局资源' },
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },

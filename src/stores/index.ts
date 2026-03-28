@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Project, Chapter, LLMConfig, Agent, TruthFile, ValidationResult, AuditResult, NovelType, GlobalLearningResource, UserPreference, ProblemCase, BestPractice } from '../types';
+import type { Project, Chapter, LLMConfig, Agent, TruthFile, ValidationResult, AuditResult, NovelType, GlobalLearningResource, UserPreference, ProblemCase, BestPractice, ZeroTokenConfig } from '../types';
 import { NOVEL_TYPES, AGENTS, HARD_RULES } from '../types';
 
 interface ProjectState {
@@ -72,11 +72,13 @@ export const useProjectStore = create<ProjectState>()(
 
 interface SettingsState {
   llmConfig: LLMConfig;
+  zeroTokenConfig: ZeroTokenConfig;
   theme: 'light' | 'dark';
   autoSave: boolean;
   autoSaveInterval: number;
   
   setLlmConfig: (config: Partial<LLMConfig>) => void;
+  setZeroTokenConfig: (config: Partial<ZeroTokenConfig>) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setAutoSave: (enabled: boolean) => void;
   setAutoSaveInterval: (interval: number) => void;
@@ -93,12 +95,22 @@ export const useSettingsStore = create<SettingsState>()(
         temperature: 0.7,
         maxTokens: 2000,
       },
+      zeroTokenConfig: {
+        gatewayUrl: 'http://127.0.0.1:3001',
+        gatewayToken: '',
+        providers: [],
+        activeProvider: '',
+        activeModel: '',
+      },
       theme: 'light',
       autoSave: true,
       autoSaveInterval: 30000,
       
       setLlmConfig: (config) => set((state) => ({
         llmConfig: { ...state.llmConfig, ...config },
+      })),
+      setZeroTokenConfig: (config) => set((state) => ({
+        zeroTokenConfig: { ...state.zeroTokenConfig, ...config },
       })),
       setTheme: (theme) => set({ theme }),
       setAutoSave: (enabled) => set({ autoSave: enabled }),

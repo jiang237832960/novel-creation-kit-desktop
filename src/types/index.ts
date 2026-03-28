@@ -121,12 +121,76 @@ export interface AuditDimension {
 }
 
 export interface LLMConfig {
-  provider: 'openai' | 'claude' | 'custom';
+  provider: 'openai' | 'claude' | 'custom' | 'zero-token';
   apiKey: string;
   endpoint?: string;
   model: string;
   temperature: number;
   maxTokens: number;
+}
+
+// Zero Token 相关类型
+export interface ZeroTokenProvider {
+  id: string;
+  name: string;
+  status: 'configured' | 'not_configured' | 'error';
+  models: ZeroTokenModel[];
+}
+
+export interface ZeroTokenModel {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow: number;
+  maxTokens: number;
+  reasoning?: boolean;
+  inputModalities?: string[];
+  outputModalities?: string[];
+}
+
+export interface ZeroTokenConfig {
+  gatewayUrl: string;
+  gatewayToken: string;
+  providers: ZeroTokenProvider[];
+  activeProvider: string;
+  activeModel: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+  provider?: string;
+  model?: string;
+}
+
+export interface ZeroTokenChatRequest {
+  model: string;
+  messages: Array<{
+    role: string;
+    content: string;
+  }>;
+  temperature?: number;
+  maxTokens?: number;
+  stream?: boolean;
+}
+
+export interface ZeroTokenChatResponse {
+  id: string;
+  model: string;
+  choices: Array<{
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason: string;
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 export interface WorkflowState {
