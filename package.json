@@ -56,8 +56,7 @@
           "target": "nsis",
           "arch": ["x64"]
         }
-      ],
-      "icon": "public/icon.png"
+      ]
     },
     "mac": {
       "target": [
@@ -65,8 +64,7 @@
           "target": "dmg",
           "arch": ["x64", "arm64"]
         }
-      ],
-      "icon": "public/icon.png"
+      ]
     },
     "linux": {
       "target": [
@@ -74,15 +72,11 @@
           "target": "AppImage",
           "arch": ["x64"]
         }
-      ],
-      "icon": "public/icon.png"
+      ]
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "public/icon.png",
-      "uninstallerIcon": "public/icon.png",
-      "installerHeaderIcon": "public/icon.png"
+      "allowToChangeInstallationDirectory": true
     }
   }
 }
