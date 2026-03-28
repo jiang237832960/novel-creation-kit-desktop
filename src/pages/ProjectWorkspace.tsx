@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Typography, Button, Space, Tabs, message, Spin, Badge, Tag, Card, List, Avatar, Tooltip, Progress } from 'antd';
+import { Layout, Typography, Button, Space, Tabs, message, Spin, Badge, Tag, Card, List, Avatar, Tooltip, Progress, FloatButton } from 'antd';
 import {
   ArrowLeftOutlined,
   SaveOutlined,
@@ -10,10 +10,12 @@ import {
   FileTextOutlined,
   SafetyOutlined,
   ExperimentOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { useProjectStore, useWorkflowStore, useSettingsStore } from '../stores';
 import { llmService, workflowEngine } from '../services/llm';
 import type { TruthFile, Chapter, Agent } from '../types';
+import AIChatPanel from '../components/chat/AIChatPanel';
 import { v4 as uuidv4 } from 'uuid';
 
 const { Header, Sider, Content } = Layout;
@@ -45,6 +47,7 @@ const ProjectWorkspace: React.FC = () => {
   const [chapterContent, setChapterContent] = useState('');
   const [leftTab, setLeftTab] = useState('workflow');
   const [activeTab, setActiveTab] = useState('chapter');
+  const [chatVisible, setChatVisible] = useState(false);
 
   const loadProject = useCallback(async () => {
     if (!id || !window.electronAPI) {
@@ -357,6 +360,16 @@ const ProjectWorkspace: React.FC = () => {
           />
         </Content>
       </Layout>
+
+      <AIChatPanel visible={chatVisible} onClose={() => setChatVisible(false)} projectId={id} />
+
+      <FloatButton
+        type="primary"
+        icon={<MessageOutlined />}
+        onClick={() => setChatVisible(true)}
+        tooltip="AI创作助手"
+        style={{ right: 24, bottom: 24 }}
+      />
     </Layout>
   );
 };

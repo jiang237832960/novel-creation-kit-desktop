@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, Row, Col, Typography, Button, Space, Tag, Statistic, Divider, List, Avatar, Progress } from 'antd';
+import React, { useState } from 'react';
+import { Card, Row, Col, Typography, Button, Space, Tag, Statistic, Divider, List, Avatar, Badge, FloatButton } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import {
   PlayCircleOutlined,
@@ -7,9 +7,10 @@ import {
   SafetyOutlined,
   ExperimentOutlined,
   ArrowRightOutlined,
-  ClockCircleOutlined,
   BookOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
+import AIChatPanel from '../components/chat/AIChatPanel';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -53,9 +54,21 @@ const HardRules = [
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [chatVisible, setChatVisible] = useState(false);
 
   return (
     <div style={{ padding: 24 }}>
+      <AIChatPanel visible={chatVisible} onClose={() => setChatVisible(false)} />
+
+      <FloatButton
+        type="primary"
+        icon={<MessageOutlined />}
+        badge={{ count: 0 }}
+        onClick={() => setChatVisible(true)}
+        tooltip="AI创作助手"
+        style={{ right: 24, bottom: 24 }}
+      />
+
       <div style={{ marginBottom: 24 }}>
         <Title level={2} style={{ margin: 0 }}>工作台</Title>
         <Text type="secondary">欢迎使用 Novel Creation Kit 多智能体小说创作系统</Text>
