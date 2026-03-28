@@ -14,15 +14,17 @@ import {
 const { Title, Text, Paragraph } = Typography;
 
 const AgentFlow = [
-  { step: 1, name: '档案员', icon: '📁', desc: '读取 Truth Files，构建上下文' },
-  { step: 2, name: '文风师', icon: '🎨', desc: '分析文风，生成风格指南' },
-  { step: 3, name: '编剧', icon: '✍️', desc: '设计场景，创建黑板' },
-  { step: 4, name: '写手', icon: '📝', desc: '两阶段写作（创作+结算）' },
-  { step: 5, name: '字数管控师', icon: '🔢', desc: '字数检查' },
-  { step: 6, name: '润色师', icon: '✨', desc: '文本优化' },
-  { step: 7, name: '验证官', icon: '🔍', desc: '33维度审计' },
-  { step: 8, name: '修订师', icon: '🔧', desc: 'Spot-fix 修复' },
-  { step: 9, name: '学习代理', icon: '🧠', desc: '更新 Truth Files' },
+  { step: 0, name: '创作总监', icon: '👑', desc: '用户交互入口', layer: 'control' },
+  { step: 1, name: '总导演', icon: '🎬', desc: '章节调度/任务拆解', layer: 'execution' },
+  { step: 2, name: '档案员', icon: '📁', desc: '上下文/伏笔追踪', layer: 'execution' },
+  { step: 3, name: '文风师', icon: '🎨', desc: '文风/节奏控制', layer: 'execution' },
+  { step: 4, name: '编剧', icon: '✍️', desc: '场景/剧情/细纲', layer: 'execution' },
+  { step: 5, name: '写手', icon: '📝', desc: '正文初稿', layer: 'execution' },
+  { step: 6, name: '字数管控', icon: '🔢', desc: '字数监控', layer: 'execution' },
+  { step: 7, name: '润色师', icon: '✨', desc: '润色/去AI痕迹', layer: 'execution' },
+  { step: 8, name: '验证官', icon: '🔍', desc: '全维度校验', layer: 'execution' },
+  { step: 9, name: '修订师', icon: '🔧', desc: '问题修复', layer: 'execution' },
+  { step: 10, name: '学习代理', icon: '🧠', desc: '经验沉淀/规则迭代', layer: 'learning' },
 ];
 
 const TruthFiles = [
@@ -65,32 +67,61 @@ const Dashboard: React.FC = () => {
             title={
               <Space>
                 <PlayCircleOutlined style={{ color: '#1890ff' }} />
-                <span>9-Agent 协作流程</span>
+                <span>12-Agent 五层协作系统</span>
               </Space>
             }
-            extra={<Tag color="blue">InkOS</Tag>}
+            extra={<Tag color="orange">InkOS</Tag>}
           >
+            <div style={{ marginBottom: 16, padding: '8px 12px', background: '#fafafa', borderRadius: 8 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                <Space>
+                  <Tag color="orange" style={{ margin: 0 }}>👑 入口</Tag>
+                  <Text type="secondary">创作总监（用户交互层）</Text>
+                  <ArrowRightOutlined style={{ color: '#d9d9d9' }} />
+                  <Tag color="blue" style={{ margin: 0 }}>🎬 总导演</Tag>
+                  <Text type="secondary">启动执行层</Text>
+                  <ArrowRightOutlined style={{ color: '#d9d9d9' }} />
+                  <Tag color="green" style={{ margin: 0 }}>🧠 学习代理</Tag>
+                  <Text type="secondary">持续优化</Text>
+                </Space>
+              </Text>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', overflowX: 'auto', padding: '8px 0' }}>
-              {AgentFlow.map((agent, index) => (
-                <React.Fragment key={agent.step}>
-                  <div style={{ textAlign: 'center', minWidth: 100 }}>
-                    <div style={{
-                      width: 48, height: 48, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      margin: '0 auto 8px', fontSize: 20
-                    }}>
-                      {agent.icon}
+              {AgentFlow.map((agent, index) => {
+                const getBgColor = () => {
+                  if (agent.layer === 'control') return '#fff7e6';
+                  if (agent.layer === 'learning') return '#f6ffed';
+                  if (index === 1) return '#e6f7ff';
+                  return '#fafafa';
+                };
+                const getBorderColor = () => {
+                  if (agent.layer === 'control') return '#ffd591';
+                  if (agent.layer === 'learning') return '#b7eb8f';
+                  if (index === 1) return '#91d5ff';
+                  return '#f0f0f0';
+                };
+                return (
+                  <React.Fragment key={agent.step}>
+                    <div style={{ textAlign: 'center', minWidth: 90 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: '50%',
+                        background: getBgColor(),
+                        border: `2px solid ${getBorderColor()}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 6px', fontSize: 18
+                      }}>
+                        {agent.icon}
+                      </div>
+                      <Text strong style={{ fontSize: 11 }}>{agent.name}</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: 9 }}>{agent.desc}</Text>
                     </div>
-                    <Text strong style={{ fontSize: 12 }}>{agent.step}. {agent.name}</Text>
-                    <br />
-                    <Text type="secondary" style={{ fontSize: 10 }}>{agent.desc}</Text>
-                  </div>
-                  {index < AgentFlow.length - 1 && (
-                    <ArrowRightOutlined style={{ color: '#d9d9d9', margin: '0 8px', flexShrink: 0 }} />
-                  )}
-                </React.Fragment>
-              ))}
+                    {index < AgentFlow.length - 1 && (
+                      <ArrowRightOutlined style={{ color: '#d9d9d9', margin: '0 4px', flexShrink: 0 }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </Card>
 

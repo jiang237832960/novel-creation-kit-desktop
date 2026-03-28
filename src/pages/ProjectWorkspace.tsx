@@ -20,16 +20,17 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
 const AgentFlow = [
-  { id: 'chief-director', name: '总导演', icon: '🎬', desc: '章节调度/任务拆解' },
-  { id: 'archivist', name: '档案员', icon: '📁', desc: '上下文/伏笔追踪' },
-  { id: 'stylist', name: '文风师', icon: '🎨', desc: '文风/节奏控制' },
-  { id: 'screenwriter', name: '编剧', icon: '✍️', desc: '场景/剧情/细纲' },
-  { id: 'writer', name: '写手', icon: '📝', desc: '正文初稿' },
-  { id: 'wordcount', name: '字数管控', icon: '🔢', desc: '字数监控' },
-  { id: 'polisher', name: '润色师', icon: '✨', desc: '润色/去AI痕迹' },
-  { id: 'verifier', name: '验证官', icon: '🔍', desc: '全维度校验' },
-  { id: 'reviser', name: '修订师', icon: '🔧', desc: '问题修复' },
-  { id: 'learning', name: '学习代理', icon: '🧠', desc: '经验沉淀/规则迭代' },
+  { id: 'creative-director', name: '创作总监', icon: '👑', desc: '用户交互入口/技能调度', layer: 'control' },
+  { id: 'chief-director', name: '总导演', icon: '🎬', desc: '章节调度/任务拆解', layer: 'execution' },
+  { id: 'archivist', name: '档案员', icon: '📁', desc: '上下文/伏笔追踪', layer: 'execution' },
+  { id: 'stylist', name: '文风师', icon: '🎨', desc: '文风/节奏控制', layer: 'execution' },
+  { id: 'screenwriter', name: '编剧', icon: '✍️', desc: '场景/剧情/细纲', layer: 'execution' },
+  { id: 'writer', name: '写手', icon: '📝', desc: '正文初稿', layer: 'execution' },
+  { id: 'wordcount', name: '字数管控', icon: '🔢', desc: '字数监控', layer: 'execution' },
+  { id: 'polisher', name: '润色师', icon: '✨', desc: '润色/去AI痕迹', layer: 'execution' },
+  { id: 'verifier', name: '验证官', icon: '🔍', desc: '全维度校验', layer: 'execution' },
+  { id: 'reviser', name: '修订师', icon: '🔧', desc: '问题修复', layer: 'execution' },
+  { id: 'learning', name: '学习代理', icon: '🧠', desc: '经验沉淀/规则迭代', layer: 'learning' },
 ];
 
 const ProjectWorkspace: React.FC = () => {
@@ -210,28 +211,39 @@ const ProjectWorkspace: React.FC = () => {
             items={[
               {
                 key: 'workflow',
-                label: <span><ExperimentOutlined /> 10-Agent</span>,
+                label: <span><ExperimentOutlined /> 12-Agent</span>,
                 children: (
                   <div style={{ padding: 12 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {AgentFlow.map((agent, index) => (
-                        <div key={agent.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                          padding: '12px',
-                          background: index === 0 ? '#e6f7ff' : '#fafafa',
-                          borderRadius: 8,
-                          border: index === 0 ? '1px solid #91d5ff' : '1px solid #f0f0f0',
-                        }}>
-                          <Avatar style={{ background: '#1890ff' }}>{agent.icon}</Avatar>
-                          <div style={{ flex: 1 }}>
-                            <Text strong style={{ fontSize: 13 }}>{agent.name}</Text>
-                            <div><Text type="secondary" style={{ fontSize: 11 }}>{agent.desc}</Text></div>
+                    <div style={{ marginBottom: 12 }}>
+                      <Text type="secondary" style={{ fontSize: 11 }}>点击Agent查看详情或执行任务</Text>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {AgentFlow.map((agent, index) => {
+                        const isControlLayer = agent.layer === 'control';
+                        const isLearningLayer = agent.layer === 'learning';
+                        const bgColor = isControlLayer ? '#fff7e6' : isLearningLayer ? '#f6ffed' : index === 0 ? '#e6f7ff' : '#fafafa';
+                        const borderColor = isControlLayer ? '#ffd591' : isLearningLayer ? '#b7eb8f' : index === 0 ? '#91d5ff' : '#f0f0f0';
+                        return (
+                          <div key={agent.id} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 12px',
+                            background: bgColor,
+                            borderRadius: 8,
+                            border: `1px solid ${borderColor}`,
+                          }}>
+                            <Avatar style={{ background: isControlLayer ? '#fa8c16' : isLearningLayer ? '#52c41a' : '#1890ff', fontSize: 14 }}>{agent.icon}</Avatar>
+                            <div style={{ flex: 1 }}>
+                              <Text strong style={{ fontSize: 13 }}>{agent.name}</Text>
+                              <div><Text type="secondary" style={{ fontSize: 11 }}>{agent.desc}</Text></div>
+                            </div>
+                            {index === 1 && <Tag color="blue">待执行</Tag>}
+                            {isControlLayer && <Tag color="orange">入口</Tag>}
+                            {isLearningLayer && <Tag color="green">学习</Tag>}
                           </div>
-                          {index === 0 && <Tag color="blue">待执行</Tag>}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ),

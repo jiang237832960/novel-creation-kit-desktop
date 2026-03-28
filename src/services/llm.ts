@@ -241,6 +241,82 @@ class LLMService {
 
 export const llmService = new LLMService();
 
+export class CreativeDirector {
+  private llm = llmService;
+  private workflowEngine: WorkflowEngine;
+
+  constructor() {
+    this.workflowEngine = new WorkflowEngine();
+  }
+
+  async processUserRequest(userInput: string): Promise<{
+    success: boolean;
+    response?: string;
+    workflowStarted?: boolean;
+    error?: string;
+  }> {
+    if (!this.llm.isConfigured()) {
+      return {
+        success: false,
+        error: 'LLM未配置，请在设置中配置API密钥'
+      };
+    }
+
+    const systemPrompt = `你是创作总监，是用户与系统的唯一交互入口。你的职责包括：
+1. 精准解析用户的创作需求，提取核心参数
+2. 调度对应的Agent执行专属技能
+3. 审核全局技能规则，确保执行不偏离
+4. 管控创作全流程，确保每个环节执行到位
+
+当用户提出创作需求时，你需要：
+1. 理解用户想要创作什么（类型、题材、风格）
+2. 判断需要启动什么样的工作流
+3. 将任务分解并分配给合适的Agent
+
+当前系统支持的Agent有：
+- 总导演：章节创作调度、任务拆解
+- 档案员：上下文组装、伏笔追踪
+- 文风师：文风标准制定
+- 编剧：场景设计、剧情架构
+- 写手：正文初稿写作
+- 字数管控师：字数监控
+- 润色师：文本润色
+- 验证官：全维度校验
+- 修订师：问题修复
+- 学习代理：经验沉淀
+
+请以创作总监的身份回复用户，并执行相应的工作流。`;
+
+    try {
+      const response = await this.llm.sendMessage([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userInput }
+      ]);
+
+      if (!response.success) {
+        return { success: false, error: response.error };
+      }
+
+      return {
+        success: true,
+        response: response.content,
+        workflowStarted: true
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '未知错误'
+      };
+    }
+  }
+
+  getWorkflowEngine(): WorkflowEngine {
+    return this.workflowEngine;
+  }
+}
+
+export const creativeDirector = new CreativeDirector();
+
 export class WorkflowEngine {
   private agents: Agent[] = [];
   private currentIndex: number = 0;
