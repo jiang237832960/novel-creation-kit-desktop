@@ -1,63 +1,48 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Typography, Button, Space, message, Spin, Tabs, Modal } from 'antd';
-import { 
-  ArrowLeftOutlined, 
-  SaveOutlined, 
-  PlayCircleOutlined, 
+import { Layout, Typography, Button, Space, Tabs, message, Spin, Badge, Tag, Card, List, Avatar, Tooltip, Progress } from 'antd';
+import {
+  ArrowLeftOutlined,
+  SaveOutlined,
+  PlayCircleOutlined,
   PauseCircleOutlined,
   ReloadOutlined,
-  SettingOutlined,
+  FileTextOutlined,
+  SafetyOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import { useProjectStore, useWorkflowStore, useSettingsStore } from '../stores';
 import { llmService, workflowEngine } from '../services/llm';
-import WorkflowCanvas from '../components/workflow/WorkflowCanvas';
-import TruthFilesPanel from '../components/truthFiles/TruthFilesPanel';
-import ChapterEditor from '../components/editor/ChapterEditor';
-import ValidationPanel from '../components/validation/ValidationPanel';
 import type { TruthFile, Chapter, Agent } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 const { Header, Sider, Content } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+const AgentFlow = [
+  { id: 'archivist', name: '档案员', icon: '📁', desc: '构建上下文' },
+  { id: 'stylist', name: '文风师', icon: '🎨', desc: '文风指南' },
+  { id: 'screenwriter', name: '编剧', icon: '✍️', desc: '场景设计' },
+  { id: 'writer', name: '写手', icon: '📝', desc: '正文写作' },
+  { id: 'wordcount', name: '字数管控', icon: '🔢', desc: '字数检查' },
+  { id: 'polisher', name: '润色师', icon: '✨', desc: '文本优化' },
+  { id: 'verifier', name: '验证官', icon: '🔍', desc: '33维度审计' },
+  { id: 'reviser', name: '修订师', icon: '🔧', desc: '问题修复' },
+  { id: 'learning', name: '学习代理', icon: '🧠', desc: '更新TruthFiles' },
+];
 
 const ProjectWorkspace: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { 
-    projects, 
-    currentProject, 
-    chapters,
-    setCurrentProject, 
-    setChapters,
-    addChapter,
-    updateChapter,
-    removeChapter,
-    setCurrentChapter,
-    currentChapter,
-  } = useProjectStore();
-  
-  const { 
-    agents, 
-    isRunning, 
-    isPaused, 
-    currentAgentIndex,
-    setAgents,
-    updateAgent,
-    setIsRunning,
-    setIsPaused,
-    setCurrentAgentIndex,
-    resetWorkflow,
-    addLog,
-  } = useWorkflowStore();
-  
+  const { projects, currentProject, chapters, setCurrentProject, setChapters, addChapter, updateChapter, removeChapter, setCurrentChapter, currentChapter } = useProjectStore();
+  const { agents, isRunning, isPaused, setAgents, setIsRunning, setIsPaused } = useWorkflowStore();
   const { llmConfig } = useSettingsStore();
   
   const [loading, setLoading] = useState(true);
   const [truthFiles, setTruthFiles] = useState<TruthFile[]>([]);
-  const [activeTab, setActiveTab] = useState('chapter');
+  const [chapterContent, setChapterContent] = useState('');
   const [leftTab, setLeftTab] = useState('workflow');
-  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('chapter');
 
   const loadProject = useCallback(async () => {
     if (!id || !window.electronAPI) {
@@ -99,14 +84,11 @@ const ProjectWorkspace: React.FC = () => {
           if (contentResult.success) {
             const match = file.name.match(/第?(\d+)章/);
             const chapterNumber = match ? parseInt(match[1], 10) : loadedChapters.length + 1;
-            const titleMatch = file.name.match(/第\d+章[：:]?(.*)\.md/);
-            const title = titleMatch ? titleMatch[1].trim() : file.name.replace('.md', '');
-            
             loadedChapters.push({
               id: uuidv4(),
               projectId: project.id,
               number: chapterNumber,
-              title,
+              title: file.name.replace('.md', ''),
               content: contentResult.content || '',
               status: 'draft',
               wordCount: (contentResult.content || '').replace(/\s/g, '').length,
@@ -129,22 +111,6 @@ const ProjectWorkspace: React.FC = () => {
     llmService.setConfig(llmConfig);
   }, [llmConfig]);
 
-  useEffect(() => {
-    workflowEngine.setOnStateChange((updatedAgents, status) => {
-      setAgents(updatedAgents);
-      if (status === 'running') {
-        setIsRunning(true);
-        setIsPaused(false);
-        setCurrentAgentIndex(updatedAgents.findIndex(a => a.status === 'running'));
-      } else if (status === 'paused') {
-        setIsPaused(true);
-      } else {
-        setIsRunning(false);
-        setIsPaused(false);
-      }
-    });
-  }, [setAgents, setIsRunning, setIsPaused, setCurrentAgentIndex]);
-
   const handleSaveTruthFile = async (file: TruthFile) => {
     if (!window.electronAPI) return;
     
@@ -152,148 +118,50 @@ const ProjectWorkspace: React.FC = () => {
     const result = await window.electronAPI.writeFile(file.path, file.content);
     if (result.success) {
       setTruthFiles(prev => prev.map(tf => tf.path === file.path ? file : tf));
-      addLog({
-        timestamp: new Date().toISOString(),
-        agentId: 'user',
-        level: 'success',
-        message: `已保存 ${file.name}`,
-      });
+      message.success('保存成功');
     } else {
       message.error(`保存失败: ${result.error}`);
-    }
-  };
-
-  const handleReloadTruthFiles = async () => {
-    if (!currentProject) return;
-    const truthFilesDir = `${currentProject.path}/truth_files`;
-    const result = await window.electronAPI.listDirectory(truthFilesDir);
-    
-    if (result.success && result.entries) {
-      const files: TruthFile[] = [];
-      for (const entry of result.entries.filter(e => !e.isDirectory && e.name.endsWith('.md'))) {
-        const fileResult = await window.electronAPI.readFile(entry.path);
-        if (fileResult.success) {
-          files.push({
-            name: entry.name,
-            path: entry.path,
-            content: fileResult.content || '',
-          });
-        }
-      }
-      setTruthFiles(files);
-      message.success('Truth Files 已重新加载');
     }
   };
 
   const handleSaveChapter = async () => {
     if (!currentProject || !currentChapter || !window.electronAPI) return;
     
-    setIsSaving(true);
-    const chapterPath = `${currentProject.path}/chapters/${currentChapter.title ? `第${currentChapter.number}章${currentChapter.title.includes('第') ? '' : '：' + currentChapter.title}` : `第${currentChapter.number}章`}.md`;
-    
-    const result = await window.electronAPI.writeFile(chapterPath, currentChapter.content);
+    const chapterPath = `${currentProject.path}/chapters/${currentChapter.title}.md`;
+    const result = await window.electronAPI.writeFile(chapterPath, chapterContent);
     if (result.success) {
-      message.success('章节保存成功');
-      addLog({
-        timestamp: new Date().toISOString(),
-        agentId: 'user',
-        level: 'success',
-        message: `已保存章节：${currentChapter.title || `第${currentChapter.number}章`}`,
+      updateChapter(currentChapter.id, {
+        content: chapterContent,
+        wordCount: chapterContent.replace(/\s/g, '').length,
       });
+      message.success('章节保存成功');
     } else {
       message.error(`保存失败: ${result.error}`);
     }
-    setIsSaving(false);
   };
 
-  const handleChapterAdd = async (chapter: Chapter) => {
-    addChapter(chapter);
-    setCurrentChapter(chapter);
-    
-    if (currentProject && window.electronAPI) {
-      const chapterPath = `${currentProject.path}/chapters/第${chapter.number}章：${chapter.title}.md`;
-      await window.electronAPI.writeFile(chapterPath, '');
-    }
-  };
-
-  const handleChapterUpdate = (id: string, updates: Partial<Chapter>) => {
-    updateChapter(id, updates);
-  };
-
-  const handleChapterDelete = (id: string) => {
-    removeChapter(id);
-    if (currentChapter?.id === id) {
-      setCurrentChapter(chapters.find(c => c.id !== id) || null);
-    }
-  };
-
-  const handleWorkflowStart = () => {
-    if (!llmService.isConfigured()) {
-      Modal.warning({
-        title: 'LLM 未配置',
-        content: '请先在设置页面配置 API 密钥',
-        okText: '去设置',
-        onOk: () => navigate('/settings'),
-      });
-      return;
-    }
-    
-    workflowEngine.setLLMConfig(llmConfig);
-    workflowEngine.start();
-    addLog({
-      timestamp: new Date().toISOString(),
-      agentId: 'system',
-      level: 'info',
-      message: '工作流已启动',
-    });
-  };
-
-  const handleWorkflowPause = () => {
-    workflowEngine.pause();
-    addLog({
-      timestamp: new Date().toISOString(),
-      agentId: 'system',
-      level: 'warning',
-      message: '工作流已暂停',
-    });
-  };
-
-  const handleWorkflowResume = () => {
-    workflowEngine.resume();
-    addLog({
-      timestamp: new Date().toISOString(),
-      agentId: 'system',
-      level: 'info',
-      message: '工作流已继续',
-    });
-  };
-
-  const handleWorkflowReset = () => {
-    Modal.confirm({
-      title: '确定要重置工作流吗？',
-      content: '这将清除所有执行状态和输出',
-      okText: '重置',
-      cancelText: '取消',
-      onOk: () => {
-        workflowEngine.reset();
-        resetWorkflow();
-        addLog({
-          timestamp: new Date().toISOString(),
-          agentId: 'system',
-          level: 'info',
-          message: '工作流已重置',
-        });
-      },
-    });
-  };
-
-  const handleAgentClick = (agent: Agent) => {
-    console.log('Agent clicked:', agent);
+  const handleAddChapter = () => {
+    if (!currentProject) return;
+    const chapterNumber = chapters.length + 1;
+    const newChapter: Chapter = {
+      id: uuidv4(),
+      projectId: currentProject.id,
+      number: chapterNumber,
+      title: `第${chapterNumber}章`,
+      content: '',
+      status: 'draft',
+      wordCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    addChapter(newChapter);
+    setCurrentChapter(newChapter);
+    setChapterContent('');
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <Spin size="large" tip="加载中..." />
       </div>
     );
@@ -301,113 +169,95 @@ const ProjectWorkspace: React.FC = () => {
 
   if (!currentProject) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <Space direction="vertical">
           <Title level={4}>项目不存在</Title>
-          <Button type="primary" onClick={() => navigate('/projects')}>
-            返回项目列表
-          </Button>
+          <Button type="primary" onClick={() => navigate('/projects')}>返回项目列表</Button>
         </Space>
       </div>
     );
   }
 
   return (
-    <Layout style={{ height: 'calc(100vh - 48px)', margin: '-24px' }}>
-      <Header style={{ 
-        background: '#fff', 
-        padding: '0 24px', 
-        borderBottom: '1px solid #f0f0f0', 
-        display: 'flex', 
-        alignItems: 'center', 
+    <Layout style={{ height: '100vh' }}>
+      <Header style={{
+        background: '#fff',
+        padding: '0 16px',
+        borderBottom: '1px solid #f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        height: 56,
       }}>
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/projects')} />
-          <Title level={4} style={{ margin: 0 }}>
-            {currentProject.name}
-          </Title>
+          <Title level={4} style={{ margin: 0 }}>{currentProject.name}</Title>
+          <Tag>{currentProject.type}</Tag>
         </Space>
         <Space>
-          <Button 
-            icon={<SaveOutlined />} 
-            onClick={handleSaveChapter}
-            loading={isSaving}
-          >
-            保存
-          </Button>
-          {!isRunning ? (
-            <Button 
-              type="primary" 
-              icon={<PlayCircleOutlined />} 
-              onClick={handleWorkflowStart}
-            >
-              运行
-            </Button>
-          ) : isPaused ? (
-            <Button icon={<PlayCircleOutlined />} onClick={handleWorkflowResume}>
-              继续
-            </Button>
-          ) : (
-            <Button icon={<PauseCircleOutlined />} onClick={handleWorkflowPause}>
-              暂停
-            </Button>
-          )}
-          <Button icon={<ReloadOutlined />} onClick={handleWorkflowReset}>
-            重置
-          </Button>
+          <Button icon={<SaveOutlined />} onClick={handleSaveChapter}>保存</Button>
+          <Button type="primary" icon={<PlayCircleOutlined />}>运行工作流</Button>
         </Space>
       </Header>
-      
+
       <Layout>
-        <Sider 
-          width={320} 
-          style={{ 
-            background: '#fff', 
-            borderRight: '1px solid #f0f0f0',
-            overflow: 'hidden',
-          }}
-        >
+        <Sider width={280} style={{ background: '#fff', borderRight: '1px solid #f0f0f0' }}>
           <Tabs
             activeKey={leftTab}
             onChange={setLeftTab}
             style={{ height: '100%' }}
-            tabBarStyle={{ marginBottom: 0, padding: '0 16px' }}
+            tabBarStyle={{ marginBottom: 0, padding: '0 12px' }}
             items={[
               {
                 key: 'workflow',
-                label: '工作流',
+                label: <span><ExperimentOutlined /> 9-Agent</span>,
                 children: (
-                  <WorkflowCanvas
-                    agents={agents}
-                    onAgentClick={handleAgentClick}
-                    onStart={handleWorkflowStart}
-                    onPause={handleWorkflowPause}
-                    onResume={handleWorkflowResume}
-                    onReset={handleWorkflowReset}
-                    isRunning={isRunning}
-                    isPaused={isPaused}
-                    currentAgentIndex={currentAgentIndex}
-                  />
+                  <div style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {AgentFlow.map((agent, index) => (
+                        <div key={agent.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '12px',
+                          background: index === 0 ? '#e6f7ff' : '#fafafa',
+                          borderRadius: 8,
+                          border: index === 0 ? '1px solid #91d5ff' : '1px solid #f0f0f0',
+                        }}>
+                          <Avatar style={{ background: '#1890ff' }}>{agent.icon}</Avatar>
+                          <div style={{ flex: 1 }}>
+                            <Text strong style={{ fontSize: 13 }}>{agent.name}</Text>
+                            <div><Text type="secondary" style={{ fontSize: 11 }}>{agent.desc}</Text></div>
+                          </div>
+                          {index === 0 && <Tag color="blue">待执行</Tag>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ),
               },
               {
                 key: 'truth',
-                label: 'Truth Files',
+                label: <span><FileTextOutlined /> Truth Files</span>,
                 children: (
-                  <TruthFilesPanel
-                    files={truthFiles}
-                    onSave={handleSaveTruthFile}
-                    onReload={handleReloadTruthFiles}
-                    projectPath={currentProject.path}
+                  <List
+                    size="small"
+                    style={{ padding: 12 }}
+                    dataSource={truthFiles}
+                    renderItem={(file) => (
+                      <List.Item style={{ padding: '8px 0', cursor: 'pointer' }}>
+                        <List.Item.Meta
+                          avatar={<Avatar style={{ fontSize: 16 }}>📄</Avatar>}
+                          title={<Text style={{ fontSize: 12 }}>{file.name.replace('.md', '')}</Text>}
+                        />
+                      </List.Item>
+                    )}
                   />
                 ),
               },
             ]}
           />
         </Sider>
-        
+
         <Content>
           <Tabs
             activeKey={activeTab}
@@ -417,29 +267,77 @@ const ProjectWorkspace: React.FC = () => {
             items={[
               {
                 key: 'chapter',
-                label: '章节编辑',
+                label: <span><FileTextOutlined /> 章节编辑</span>,
                 children: (
-                  <ChapterEditor
-                    projectId={currentProject.id}
-                    projectPath={currentProject.path}
-                    chapters={chapters}
-                    currentChapter={currentChapter}
-                    onChapterSelect={setCurrentChapter}
-                    onChapterAdd={handleChapterAdd}
-                    onChapterUpdate={handleChapterUpdate}
-                    onChapterDelete={handleChapterDelete}
-                    onSave={handleSaveChapter}
-                  />
+                  <div style={{ height: 'calc(100vh - 180px)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Space>
+                        <select
+                          value={currentChapter?.id || ''}
+                          onChange={(e) => {
+                            const ch = chapters.find(c => c.id === e.target.value);
+                            if (ch) {
+                              setCurrentChapter(ch);
+                              setChapterContent(ch.content);
+                            }
+                          }}
+                          style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #d9d9d9' }}
+                        >
+                          <option value="">选择章节</option>
+                          {chapters.map(c => (
+                            <option key={c.id} value={c.id}>第{c.number}章 - {c.title}</option>
+                          ))}
+                        </select>
+                        <Button size="small" onClick={handleAddChapter}>新建章节</Button>
+                      </Space>
+                      <Text type="secondary">字数：{chapterContent.replace(/\s/g, '').length}</Text>
+                    </div>
+                    <textarea
+                      value={chapterContent}
+                      onChange={(e) => setChapterContent(e.target.value)}
+                      placeholder="开始创作..."
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        padding: 16,
+                        fontSize: 15,
+                        fontFamily: '"Songti SC", "SimSun", serif',
+                        lineHeight: 1.8,
+                        resize: 'none',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
                 ),
               },
               {
                 key: 'validation',
-                label: '验证审计',
+                label: <span><SafetyOutlined /> 验证审计</span>,
                 children: (
-                  <ValidationPanel
-                    content={currentChapter?.content || ''}
-                    chapterId={currentChapter?.id || 'unknown'}
-                  />
+                  <div style={{ padding: 16 }}>
+                    <Card title="11 条硬规则" size="small">
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                        {[
+                          { id: 'R01', rule: '禁止"不是……而是……"句式', error: true },
+                          { id: 'R02', rule: '禁止破折号"——"', error: true },
+                          { id: 'R03', rule: '转折词密度 ≤ 1次/3000字', error: false },
+                          { id: 'R04', rule: '高疲劳词 ≤ 1次/章', error: false },
+                          { id: 'R05', rule: '禁止元叙事', error: false },
+                          { id: 'R06', rule: '禁止报告术语', error: true },
+                          { id: 'R07', rule: '禁止作者说教词', error: false },
+                          { id: 'R08', rule: '禁止集体反应套话', error: false },
+                          { id: 'R09', rule: '禁止连续4句"了"字', error: false },
+                          { id: 'R10', rule: '段落长度 ≤ 300字', error: false },
+                          { id: 'R11', rule: '禁止本书禁忌', error: true },
+                        ].map(r => (
+                          <Tag key={r.id} color={r.error ? 'error' : 'warning'}>{r.id} {r.rule}</Tag>
+                        ))}
+                      </div>
+                    </Card>
+                    <Card title="33 维度审计" size="small" style={{ marginTop: 16 }}>
+                      <Text type="secondary">选择章节后点击"运行审计"开始检查</Text>
+                    </Card>
+                  </div>
                 ),
               },
             ]}
