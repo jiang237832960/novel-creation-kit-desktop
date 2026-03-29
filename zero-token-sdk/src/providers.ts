@@ -1,72 +1,274 @@
-import type { ProviderInfo } from './types';
+import type { ProviderInfo, ModelCategory } from './types';
+
+export const MODEL_CATEGORIES: { id: ModelCategory; name: string; icon: string }[] = [
+  { id: 'chat', name: '对话模型', icon: '💬' },
+  { id: 'image', name: '生图模型', icon: '🎨' },
+  { id: 'video', name: '视频模型', icon: '🎬' },
+  { id: 'audio', name: '语音模型', icon: '🎙️' },
+];
 
 export const DEFAULT_PROVIDERS: ProviderInfo[] = [
+  // ============ 对话模型 ============
   {
     id: 'deepseek',
     name: 'DeepSeek',
+    category: 'chat',
     baseUrl: 'https://chat.deepseek.com',
     apiPath: '/api/v1/chat/completions',
-    models: [
-      { id: 'deepseek-chat', name: 'DeepSeek Chat', contextWindow: 64000, maxTokens: 4096 },
-      { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', contextWindow: 64000, maxTokens: 8192, reasoning: true },
-    ],
+    models: [],
   },
   {
     id: 'claude',
     name: 'Claude',
+    category: 'chat',
     baseUrl: 'https://claude.ai',
     apiPath: '/api/chat/completions',
-    models: [
-      { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4', contextWindow: 195000, maxTokens: 8192 },
-      { id: 'claude-opus-4-6', name: 'Claude Opus 4', contextWindow: 195000, maxTokens: 8192 },
-    ],
-  },
-  {
-    id: 'qwen',
-    name: 'Qwen',
-    baseUrl: 'https://chat.qwen.ai',
-    apiPath: '/api/v1/chat/completions',
-    models: [
-      { id: 'qwen-plus', name: 'Qwen Plus', contextWindow: 32000, maxTokens: 4096 },
-      { id: 'qwen-turbo', name: 'Qwen Turbo', contextWindow: 32000, maxTokens: 4096 },
-    ],
-  },
-  {
-    id: 'kimi',
-    name: 'Kimi',
-    baseUrl: 'https://kimi.moonshot.cn',
-    apiPath: '/api/v1/chat/completions',
-    models: [
-      { id: 'moonshot-v1-8k', name: 'Moonshot V1 8K', contextWindow: 8000, maxTokens: 4096 },
-      { id: 'moonshot-v1-32k', name: 'Moonshot V1 32K', contextWindow: 32000, maxTokens: 4096 },
-    ],
-  },
-  {
-    id: 'doubao',
-    name: '豆包',
-    baseUrl: 'https://www.doubao.com',
-    apiPath: '/api/v1/chat/completions',
-    models: [
-      { id: 'doubao-seed-2.0', name: '豆包 Seed 2.0', contextWindow: 63000, maxTokens: 4096 },
-    ],
+    models: [],
   },
   {
     id: 'chatgpt',
     name: 'ChatGPT',
+    category: 'chat',
     baseUrl: 'https://chat.openai.com',
     apiPath: '/api/chat/completions',
-    models: [
-      { id: 'gpt-4', name: 'GPT-4', contextWindow: 8000, maxTokens: 4096 },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', contextWindow: 128000, maxTokens: 4096 },
-    ],
+    models: [],
   },
   {
     id: 'gemini',
     name: 'Gemini',
+    category: 'chat',
     baseUrl: 'https://generativelanguage.googleapis.com',
     apiPath: '/v1beta/models',
-    models: [
-      { id: 'gemini-pro', name: 'Gemini Pro', contextWindow: 32000, maxTokens: 4096 },
-    ],
+    models: [],
+  },
+  {
+    id: 'qwen',
+    name: 'Qwen',
+    category: 'chat',
+    baseUrl: 'https://chat.qwen.ai',
+    apiPath: '/api/v1/chat/completions',
+    models: [],
+  },
+  {
+    id: 'kimi',
+    name: 'Kimi',
+    category: 'chat',
+    baseUrl: 'https://kimi.moonshot.cn',
+    apiPath: '/api/v1/chat/completions',
+    models: [],
+  },
+  {
+    id: 'doubao',
+    name: '豆包',
+    category: 'chat',
+    baseUrl: 'https://www.doubao.com',
+    apiPath: '/api/v1/chat/completions',
+    models: [],
+  },
+  {
+    id: 'grok',
+    name: 'Grok',
+    category: 'chat',
+    baseUrl: 'https://api.grok.x.com',
+    apiPath: '/v1/chat/completions',
+    models: [],
+  },
+  {
+    id: 'glm',
+    name: '智谱 GLM',
+    category: 'chat',
+    baseUrl: 'https://chatglm.cn',
+    apiPath: '/api/paa/v4/chat/completions',
+    models: [],
+  },
+  {
+    id: 'mistral',
+    name: 'Mistral',
+    category: 'chat',
+    baseUrl: 'https://api.mistral.ai',
+    apiPath: '/v1/chat/completions',
+    models: [],
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity',
+    category: 'chat',
+    baseUrl: 'https://api.perplexity.ai',
+    apiPath: '/chat/completions',
+    models: [],
+  },
+
+  // ============ 生图模型 ============
+  {
+    id: 'midjourney',
+    name: 'Midjourney',
+    category: 'image',
+    baseUrl: 'https://api.thenextleg.io',
+    apiPath: '/v2/imagine',
+    models: [],
+  },
+  {
+    id: 'dalle',
+    name: 'DALL-E',
+    category: 'image',
+    baseUrl: 'https://api.openai.com',
+    apiPath: '/v1/images/generations',
+    models: [],
+  },
+  {
+    id: 'stable-diffusion',
+    name: 'Stable Diffusion',
+    category: 'image',
+    baseUrl: 'https://api.stability.ai',
+    apiPath: '/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image',
+    models: [],
+  },
+  {
+    id: 'flux',
+    name: 'FLUX',
+    category: 'image',
+    baseUrl: 'https://api.runwayml.com',
+    apiPath: '/v1/image/generation',
+    models: [],
+  },
+  {
+    id: 'ideogram',
+    name: 'Ideogram',
+    category: 'image',
+    baseUrl: 'https://api.ideogram.ai',
+    apiPath: '/v1/generations',
+    models: [],
+  },
+  {
+    id: 'recraft',
+    name: 'Recraft',
+    category: 'image',
+    baseUrl: 'https://-api.recraft.ai',
+    apiPath: '/v3/chat/completions',
+    models: [],
+  },
+
+  // ============ 视频模型 ============
+  {
+    id: 'sora',
+    name: 'Sora',
+    category: 'video',
+    baseUrl: 'https://api.openai.com',
+    apiPath: '/v1/video/generations',
+    models: [],
+  },
+  {
+    id: 'runway',
+    name: 'Runway',
+    category: 'video',
+    baseUrl: 'https://api.runwayml.com',
+    apiPath: '/v1/videos/generations',
+    models: [],
+  },
+  {
+    id: 'pika',
+    name: 'Pika',
+    category: 'video',
+    baseUrl: 'https://api.pika.art',
+    apiPath: '/v1/videos/generations',
+    models: [],
+  },
+  {
+    id: 'kling',
+    name: '快手可灵',
+    category: 'video',
+    baseUrl: 'https://api.klingai.com',
+    apiPath: '/v1/videos/generations',
+    models: [],
+  },
+  {
+    id: 'hailuo',
+    name: '海螺视频',
+    category: 'video',
+    baseUrl: 'https://api.hailuoai.com',
+    apiPath: '/v1/video/generate',
+    models: [],
+  },
+  {
+    id: 'jianying',
+    name: '剪映',
+    category: 'video',
+    baseUrl: 'https://lf-beijing-jym.bytedance.com',
+    apiPath: '/api/jianying/v1/video/generate',
+    models: [],
+  },
+
+  // ============ 语音模型 ============
+  {
+    id: 'elevenlabs',
+    name: 'ElevenLabs',
+    category: 'audio',
+    baseUrl: 'https://api.elevenlabs.io',
+    apiPath: '/v1/text-to-speech',
+    models: [],
+  },
+  {
+    id: 'openai-audio',
+    name: 'OpenAI Audio',
+    category: 'audio',
+    baseUrl: 'https://api.openai.com',
+    apiPath: '/v1/audio/speech',
+    models: [],
+  },
+  {
+    id: 'cartesia',
+    name: 'Cartesia',
+    category: 'audio',
+    baseUrl: 'https://api.cartesia.ai',
+    apiPath: '/tts',
+    models: [],
+  },
+  {
+    id: 'lmnt',
+    name: 'LMNT',
+    category: 'audio',
+    baseUrl: 'https://api.lmnt.com',
+    apiPath: '/v1/synthesize',
+    models: [],
+  },
+  {
+    id: 'azure-tts',
+    name: 'Azure TTS',
+    category: 'audio',
+    baseUrl: 'https://eastus.tts.speech.microsoft.com',
+    apiPath: '/cognitiveservices/v1',
+    models: [],
+  },
+  {
+    id: 'minimax-audio',
+    name: 'MiniMax 语音',
+    category: 'audio',
+    baseUrl: 'https://api.minimax.chat',
+    apiPath: '/v1/t2a_v2',
+    models: [],
+  },
+  {
+    id: ' volcengine-tts',
+    name: '火山引擎语音',
+    category: 'audio',
+    baseUrl: 'https://openspeech.bytedance.com',
+    apiPath: '/api/v1/tts',
+    models: [],
+  },
+  {
+    id: 'iflytek',
+    name: '讯飞语音',
+    category: 'audio',
+    baseUrl: 'https://tts-api.xfyun.cn',
+    apiPath: '/v2/tts',
+    models: [],
   },
 ];
+
+export function getProvidersByCategory(category: ModelCategory): ProviderInfo[] {
+  return DEFAULT_PROVIDERS.filter(p => p.category === category);
+}
+
+export function getProvider(id: string): ProviderInfo | undefined {
+  return DEFAULT_PROVIDERS.find(p => p.id === id);
+}

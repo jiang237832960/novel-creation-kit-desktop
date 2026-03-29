@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "ZeroToken Proxy",
+  "version": "1.0.0",
+  "description": "ZeroToken 浏览器凭证代理，让 Web 应用可以调用 AI 平台 API",
+  "permissions": [
+    "activeTab",
+    "cookies",
+    "storage",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://chat.deepseek.com/*",
+    "https://claude.ai/*",
+    "https://chat.qwen.ai/*",
+    "https://kimi.moonshot.cn/*",
+    "https://www.doubao.com/*",
+    "https://chat.openai.com/*",
+    "https://gemini.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

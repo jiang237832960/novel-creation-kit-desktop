@@ -1,5 +1,12 @@
-import type { ZeroTokenSDK, ZeroTokenConfig } from './types';
+import type { ZeroTokenSDK, ZeroTokenConfig, ChatRequest, ChatResponse, ImageRequest, VideoRequest, AudioRequest } from './types';
 import { NodeAdapter } from './node';
+import { DEFAULT_PROVIDERS } from './providers';
+
+declare const chrome: {
+  runtime?: {
+    sendMessage(message: any): Promise<any>;
+  }
+};
 
 export function createSDK(config: ZeroTokenConfig): ZeroTokenSDK {
   switch (config.mode) {
@@ -13,7 +20,6 @@ export function createSDK(config: ZeroTokenConfig): ZeroTokenSDK {
 }
 
 function createBrowserExtensionSDK(): ZeroTokenSDK {
-  // @ts-ignore - Chrome runtime global
   if (typeof chrome === 'undefined' || !chrome.runtime) {
     throw new Error('Chrome extension not found. Please install ZeroToken Chrome extension.');
   }
@@ -23,7 +29,6 @@ function createBrowserExtensionSDK(): ZeroTokenSDK {
   return {
     async init(): Promise<void> {},
     getProviders() {
-      const { DEFAULT_PROVIDERS } = require('./providers');
       return DEFAULT_PROVIDERS;
     },
     async getAuthStatus() {
@@ -36,7 +41,7 @@ function createBrowserExtensionSDK(): ZeroTokenSDK {
       if (!response.success) throw new Error(response.error);
     },
     async logout(): Promise<void> {},
-    async chat(request) {
+    async chat(request: ChatRequest): Promise<ChatResponse> {
       const [providerId] = request.model.split('/');
       const response = await chromeRuntime.sendMessage({
         action: 'proxyRequest',
@@ -53,11 +58,41 @@ function createBrowserExtensionSDK(): ZeroTokenSDK {
         }],
       };
     },
-    async chatStream(request, onChunk) {
+    async chatStream(request: ChatRequest, onChunk: (content: string) => void): Promise<void> {
       const response = await this.chat({ ...request, stream: false });
       onChunk(response.choices[0].message.content);
     },
-    destroy() {},
+    async generateImage(request: ImageRequest): Promise<{ url: string }> {
+      const [providerId] = request.model.split('/');
+      const response = await chromeRuntime.sendMessage({
+        action: 'proxyRequest',
+        data: { providerId, body: request },
+      });
+      if (!response.success) throw new Error(response.error);
+      const data = JSON.parse(response.result.body);
+      return { url: data.data?.[0]?.url || '' };
+    },
+    async generateVideo(request: VideoRequest): Promise<{ url: string }> {
+      const [providerId] = request.model.split('/');
+      const response = await chromeRuntime.sendMessage({
+        action: 'proxyRequest',
+        data: { providerId, body: request },
+      });
+      if (!response.success) throw new Error(response.error);
+      const data = JSON.parse(response.result.body);
+      return { url: data.data?.[0]?.url || '' };
+    },
+    async textToSpeech(request: AudioRequest): Promise<{ url: string }> {
+      const [providerId] = request.model.split('/');
+      const response = await chromeRuntime.sendMessage({
+        action: 'proxyRequest',
+        data: { providerId, body: request },
+      });
+      if (!response.success) throw new Error(response.error);
+      const data = JSON.parse(response.result.body);
+      return { url: data.url || data.data?.[0]?.url || '' };
+    },
+    destroy(): void {},
   };
 }
 

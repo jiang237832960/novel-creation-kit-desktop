@@ -4,9 +4,13 @@ import type {
   ProviderInfo, 
   AuthStatus, 
   ChatRequest, 
-  ChatResponse 
+  ChatResponse,
+  ImageRequest,
+  VideoRequest,
+  AudioRequest,
+  ModelCategory
 } from './types';
-import { DEFAULT_PROVIDERS } from './providers';
+import { DEFAULT_PROVIDERS, getProvidersByCategory } from './providers';
 
 type StreamCallback = (content: string) => void;
 
@@ -27,7 +31,10 @@ class NodeAdapter implements ZeroTokenSDK {
     this.config = _config;
   }
 
-  getProviders(): ProviderInfo[] {
+  getProviders(category?: ModelCategory): ProviderInfo[] {
+    if (category) {
+      return getProvidersByCategory(category);
+    }
     return DEFAULT_PROVIDERS;
   }
 
@@ -35,6 +42,7 @@ class NodeAdapter implements ZeroTokenSDK {
     return DEFAULT_PROVIDERS.map(p => ({
       provider: p.id,
       name: p.name,
+      category: p.category,
       authenticated: this.authStates.has(p.id),
     }));
   }
@@ -45,10 +53,13 @@ class NodeAdapter implements ZeroTokenSDK {
       throw new Error(`Unknown provider: ${providerId}`);
     }
     
-    // Open browser for login
     if (this.config.mode === 'node') {
-      const { shell } = await import('electron');
-      await shell.openExternal(provider.baseUrl);
+      try {
+        const { shell } = await import('electron');
+        await shell.openExternal(provider.baseUrl);
+      } catch {
+        console.log(`Please login at: ${provider.baseUrl}`);
+      }
     } else {
       console.log(`Please login at: ${provider.baseUrl}`);
     }
@@ -65,22 +76,28 @@ class NodeAdapter implements ZeroTokenSDK {
     this.authStates.delete(providerId);
   }
 
-  async chat(request: ChatRequest): Promise<ChatResponse> {
-    const [providerId] = request.model.split('/');
+  private getAuth(providerId: string): AuthState {
     const auth = this.authStates.get(providerId);
-    
     if (!auth) {
-      throw new Error(`Not logged in to ${providerId}. Please call login() first.`);
+      throw new Error(`Not logged in to ${providerId}. Please call login() or setCredentials() first.`);
     }
+    return auth;
+  }
 
+  private getProviderInfo(providerId: string) {
     const provider = DEFAULT_PROVIDERS.find(p => p.id === providerId);
     if (!provider) {
       throw new Error(`Unknown provider: ${providerId}`);
     }
+    return provider;
+  }
 
-    const url = `${provider.baseUrl}${provider.apiPath}`;
-    
-    const response = await fetch(url, {
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    const [providerId] = request.model.split('/');
+    const auth = this.getAuth(providerId);
+    const provider = this.getProviderInfo(providerId);
+
+    const response = await fetch(`${provider.baseUrl}${provider.apiPath}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -94,11 +111,10 @@ class NodeAdapter implements ZeroTokenSDK {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`API error: ${response.status} - ${errorText}`);
+      throw new Error(`API error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
-    
     return {
       id: data.id || `chat-${Date.now()}`,
       model: request.model,
@@ -119,20 +135,10 @@ class NodeAdapter implements ZeroTokenSDK {
 
   async chatStream(request: ChatRequest, onChunk: StreamCallback): Promise<void> {
     const [providerId] = request.model.split('/');
-    const auth = this.authStates.get(providerId);
-    
-    if (!auth) {
-      throw new Error(`Not logged in to ${providerId}. Please call login() first.`);
-    }
+    const auth = this.getAuth(providerId);
+    const provider = this.getProviderInfo(providerId);
 
-    const provider = DEFAULT_PROVIDERS.find(p => p.id === providerId);
-    if (!provider) {
-      throw new Error(`Unknown provider: ${providerId}`);
-    }
-
-    const url = `${provider.baseUrl}${provider.apiPath}`;
-    
-    const response = await fetch(url, {
+    const response = await fetch(`${provider.baseUrl}${provider.apiPath}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -145,13 +151,11 @@ class NodeAdapter implements ZeroTokenSDK {
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`API error ${response.status}`);
     }
 
     const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('No response body');
-    }
+    if (!reader) throw new Error('No response body');
 
     const decoder = new TextDecoder();
     let buffer = '';
@@ -167,19 +171,91 @@ class NodeAdapter implements ZeroTokenSDK {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || !trimmed.startsWith('data: ')) continue;
-        
         const data = trimmed.slice(6);
         if (data === '[DONE]') continue;
 
         try {
           const parsed = JSON.parse(data);
           const content = parsed.choices?.[0]?.delta?.content;
-          if (content) {
-            onChunk(content);
-          }
+          if (content) onChunk(content);
         } catch {}
       }
     }
+  }
+
+  async generateImage(request: ImageRequest): Promise<{ url: string }> {
+    const [providerId] = request.model.split('/');
+    const auth = this.getAuth(providerId);
+    const provider = this.getProviderInfo(providerId);
+
+    const response = await fetch(`${provider.baseUrl}${provider.apiPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': auth.cookie,
+        'User-Agent': auth.userAgent,
+        'Origin': provider.baseUrl,
+        'Referer': provider.baseUrl,
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { url: data.data?.[0]?.url || '' };
+  }
+
+  async generateVideo(request: VideoRequest): Promise<{ url: string }> {
+    const [providerId] = request.model.split('/');
+    const auth = this.getAuth(providerId);
+    const provider = this.getProviderInfo(providerId);
+
+    const response = await fetch(`${provider.baseUrl}${provider.apiPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': auth.cookie,
+        'User-Agent': auth.userAgent,
+        'Origin': provider.baseUrl,
+        'Referer': provider.baseUrl,
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { url: data.data?.[0]?.url || '' };
+  }
+
+  async textToSpeech(request: AudioRequest): Promise<{ url: string }> {
+    const [providerId] = request.model.split('/');
+    const auth = this.getAuth(providerId);
+    const provider = this.getProviderInfo(providerId);
+
+    const response = await fetch(`${provider.baseUrl}${provider.apiPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': auth.cookie,
+        'User-Agent': auth.userAgent,
+        'Origin': provider.baseUrl,
+        'Referer': provider.baseUrl,
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { url: data.url || data.data?.[0] || '' };
   }
 
   destroy(): void {
@@ -187,10 +263,4 @@ class NodeAdapter implements ZeroTokenSDK {
   }
 }
 
-export function createSDK(config: ZeroTokenConfig): ZeroTokenSDK {
-  return new NodeAdapter(config);
-}
-
 export { NodeAdapter };
-export * from './types';
-export { DEFAULT_PROVIDERS };

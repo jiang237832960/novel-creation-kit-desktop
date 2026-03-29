@@ -4,17 +4,21 @@ import type {
   ProviderInfo, 
   AuthStatus, 
   ChatRequest, 
-  ChatResponse
+  ChatResponse,
+  ImageRequest,
+  VideoRequest,
+  AudioRequest,
+  ModelCategory
 } from './types';
-import { DEFAULT_PROVIDERS } from './providers';
+import { DEFAULT_PROVIDERS, MODEL_CATEGORIES, getProvidersByCategory } from './providers';
+
+type StreamCallback = (content: string) => void;
 
 declare const chrome: typeof globalThis & { 
   runtime?: { 
     sendMessage: (message: any) => Promise<any>;
   } 
 };
-
-type StreamCallback = (content: string) => void;
 
 class BrowserExtensionAdapter implements ZeroTokenSDK {
   async init(_config: ZeroTokenConfig): Promise<void> {
@@ -23,7 +27,10 @@ class BrowserExtensionAdapter implements ZeroTokenSDK {
     }
   }
 
-  getProviders(): ProviderInfo[] {
+  getProviders(category?: ModelCategory): ProviderInfo[] {
+    if (category) {
+      return getProvidersByCategory(category);
+    }
     return DEFAULT_PROVIDERS;
   }
 
@@ -42,19 +49,13 @@ class BrowserExtensionAdapter implements ZeroTokenSDK {
     }
   }
 
-  async logout(_providerId: string): Promise<void> {
-    // Browser extension doesn't need explicit logout
-  }
+  async logout(_providerId: string): Promise<void> {}
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
-    const [providerId] = request.model.split('/');
-    
+    const [providerId] = request.model.split('/');    
     const response = await chrome.runtime!.sendMessage({
       action: 'proxyRequest',
-      data: {
-        providerId,
-        body: request,
-      },
+      data: { providerId, body: request },
     });
 
     if (!response.success) {
@@ -80,13 +81,42 @@ class BrowserExtensionAdapter implements ZeroTokenSDK {
     onChunk(response.choices[0].message.content);
   }
 
-  destroy(): void {}
-}
+  async generateImage(request: ImageRequest): Promise<{ url: string }> {
+    const [providerId] = request.model.split('/');
+    const response = await chrome.runtime!.sendMessage({
+      action: 'proxyRequest',
+      data: { providerId, body: request },
+    });
+    if (!response.success) throw new Error(response.error || 'Request failed');
+    const data = JSON.parse(response.result.body);
+    return { url: data.data?.[0]?.url || '' };
+  }
 
-export function createSDK(_config: ZeroTokenConfig): ZeroTokenSDK {
-  return new BrowserExtensionAdapter();
+  async generateVideo(request: VideoRequest): Promise<{ url: string }> {
+    const [providerId] = request.model.split('/');
+    const response = await chrome.runtime!.sendMessage({
+      action: 'proxyRequest',
+      data: { providerId, body: request },
+    });
+    if (!response.success) throw new Error(response.error || 'Request failed');
+    const data = JSON.parse(response.result.body);
+    return { url: data.data?.[0]?.url || '' };
+  }
+
+  async textToSpeech(request: AudioRequest): Promise<{ url: string }> {
+    const [providerId] = request.model.split('/');
+    const response = await chrome.runtime!.sendMessage({
+      action: 'proxyRequest',
+      data: { providerId, body: request },
+    });
+    if (!response.success) throw new Error(response.error || 'Request failed');
+    const data = JSON.parse(response.result.body);
+    return { url: data.url || '' };
+  }
+
+  destroy(): void {}
 }
 
 export { BrowserExtensionAdapter };
 export * from './types';
-export { DEFAULT_PROVIDERS };
+export { DEFAULT_PROVIDERS, MODEL_CATEGORIES, getProvidersByCategory };
