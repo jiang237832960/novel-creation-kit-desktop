@@ -1,0 +1,47 @@
+{
+  "name": "@zero-token/sdk",
+  "version": "1.0.0",
+  "description": "Zero Token SDK - 通过浏览器凭证免费使用 AI 模型",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser.mjs",
+      "require": "./dist/browser.js"
+    },
+    "./node": {
+      "import": "./dist/node.mjs", 
+      "require": "./dist/node.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "keywords": [
+    "ai",
+    "chatgpt",
+    "claude",
+    "deepseek",
+    "zero-token",
+    "cookie",
+    "free-ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "tsup": "^8.0.0",
+    "vitest": "^1.0.0"
+  }
+}
