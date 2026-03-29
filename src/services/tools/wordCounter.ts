@@ -23,12 +23,12 @@ class WordCountTool implements Tool {
   nameCn = '字数统计工具';
   description = '精准字数统计、字数合规校验';
 
-  execute(params: { text: string; requiredWordCount?: number }): {
+  async execute(params: { text: string; requiredWordCount?: number }): Promise<{
     success: boolean;
     result?: WordCountResult;
     compliance?: WordCountCompliance;
     error?: string;
-  } {
+  }> {
     try {
       const { text, requiredWordCount } = params;
 

@@ -1,5 +1,16 @@
-import type { LLMConfig, Agent } from '../types';
+import type { LLMConfig, Agent, NovelType } from '../types';
 import { zeroTokenService } from './zeroToken';
+
+export interface PendingProject {
+  name?: string;
+  type?: NovelType;
+  description?: string;
+  confirmed: boolean;
+}
+
+export interface OnProjectCreateCallback {
+  (project: { name: string; type: NovelType; description?: string }): void;
+}
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
@@ -292,18 +303,80 @@ class LLMService {
 
 export const llmService = new LLMService();
 
+const NOVEL_TYPES: NovelType[] = ['无限流', '玄幻', '都市', '科幻', '悬疑推理', '其他'];
+
 export class CreativeDirector {
   private llm = llmService;
-  private workflowEngine: WorkflowEngine;
+  private workflowEngine!: WorkflowEngine;
+  private pendingProject: PendingProject = { confirmed: false };
+  private onProjectCreateCallback?: OnProjectCreateCallback;
 
   constructor() {
-    this.workflowEngine = new WorkflowEngine();
+    setTimeout(() => {
+      this.workflowEngine = new WorkflowEngine();
+    }, 0);
+  }
+
+  setOnProjectCreateCallback(callback: OnProjectCreateCallback): void {
+    this.onProjectCreateCallback = callback;
+  }
+
+  private extractProjectInfo(text: string): Partial<PendingProject> {
+    const result: Partial<PendingProject> = {};
+    const lowerText = text.toLowerCase();
+
+    const typePatterns: Record<string, NovelType> = {
+      '无限流': '无限流',
+      '玄幻': '玄幻',
+      '都市': '都市',
+      '科幻': '科幻',
+      '悬疑': '悬疑推理',
+      '推理': '悬疑推理',
+      '其他': '其他',
+    };
+
+    for (const [pattern, type] of Object.entries(typePatterns)) {
+      if (text.includes(pattern)) {
+        result.type = type;
+        break;
+      }
+    }
+
+    const bookTitleMatch = text.match(/《([^》]+)》/);
+    if (bookTitleMatch) {
+      result.name = bookTitleMatch[1];
+    } else {
+      const createProjectMatch = text.match(/创建项目[:：]\s*["']?([^"'，,\n]+)["']?/i);
+      if (createProjectMatch) {
+        result.name = createProjectMatch[1].trim();
+      }
+    }
+
+    return result;
+  }
+
+  private buildProjectCreationPrompt(userInput: string): string {
+    return `你是创作总监，是用户与系统的唯一交互入口。你的职责包括：
+1. 精准解析用户的创作需求，提取核心参数
+2. 调度对应的Agent执行专属技能
+3. 审核全局技能规则，确保执行不偏离
+4. 管控创作全流程，确保每个环节执行到位
+
+当前用户想要创建小说项目，请通过对话引导用户完善以下信息：
+- 项目名称（书名）
+- 小说类型（无限流/玄幻/都市/科幻/悬疑推理/其他）
+
+请以友好、专业的方式与用户对话，询问缺少的信息。
+当用户提供了足够信息（至少包括名称和类型），请询问用户确认是否创建项目。
+如果用户确认创建，回复"确认创建项目：[项目名称]@[项目类型]"，其中项目和类型用实际值替换。
+如果用户表示不需要创建项目，回复"取消创建"并友好地结束对话。`;
   }
 
   async processUserRequest(userInput: string): Promise<{
     success: boolean;
     response?: string;
     workflowStarted?: boolean;
+    projectCreated?: boolean;
     error?: string;
   }> {
     if (!this.llm.isConfigured()) {
@@ -313,7 +386,24 @@ export class CreativeDirector {
       };
     }
 
-    const systemPrompt = `你是创作总监，是用户与系统的唯一交互入口。你的职责包括：
+    const extractedInfo = this.extractProjectInfo(userInput);
+    if (extractedInfo.name) this.pendingProject.name = extractedInfo.name;
+    if (extractedInfo.type) this.pendingProject.type = extractedInfo.type;
+
+    const isCreateProjectIntent = 
+      userInput.includes('创建项目') ||
+      userInput.includes('新建项目') ||
+      userInput.includes('想写') ||
+      userInput.includes('想创作') ||
+      userInput.includes('写小说') ||
+      extractedInfo.name ||
+      extractedInfo.type;
+
+    let systemPrompt: string;
+    if (isCreateProjectIntent) {
+      systemPrompt = this.buildProjectCreationPrompt(userInput);
+    } else {
+      systemPrompt = `你是创作总监，是用户与系统的唯一交互入口。你的职责包括：
 1. 精准解析用户的创作需求，提取核心参数
 2. 调度对应的Agent执行专属技能
 3. 审核全局技能规则，确保执行不偏离
@@ -337,6 +427,7 @@ export class CreativeDirector {
 - 学习代理：经验沉淀
 
 请以创作总监的身份回复用户，并执行相应的工作流。`;
+    }
 
     try {
       const response = await this.llm.sendMessage([
@@ -348,10 +439,36 @@ export class CreativeDirector {
         return { success: false, error: response.error };
       }
 
+      const content = response.content || '';
+
+      const confirmMatch = content.match(/确认创建项目[：:]\s*([^@]+)@(.+?)(?:\s*$|,|\。|\.)/);
+      if (confirmMatch && this.onProjectCreateCallback) {
+        const projectName = confirmMatch[1].trim();
+        const projectType = confirmMatch[2].trim() as NovelType;
+
+        this.onProjectCreateCallback({
+          name: projectName,
+          type: NOVEL_TYPES.includes(projectType) ? projectType : '其他',
+        });
+
+        this.pendingProject = { confirmed: false };
+
+        return {
+          success: true,
+          response: `项目"${projectName}"创建成功！`,
+          workflowStarted: true,
+          projectCreated: true,
+        };
+      }
+
+      if (content.includes('取消创建')) {
+        this.pendingProject = { confirmed: false };
+      }
+
       return {
         success: true,
-        response: response.content,
-        workflowStarted: true
+        response: content,
+        workflowStarted: true,
       };
     } catch (error) {
       return {

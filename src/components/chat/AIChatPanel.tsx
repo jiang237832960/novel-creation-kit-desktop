@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Input, Button, Avatar, Space, List, Spin, Typography } from 'antd';
 import { SendOutlined, UserOutlined, RobotOutlined, CloseOutlined } from '@ant-design/icons';
 import { creativeDirector } from '../../services/llm';
+import type { NovelType } from '../../types';
 
 const { Text } = Typography;
 
@@ -16,9 +17,10 @@ interface AIChatPanelProps {
   visible: boolean;
   onClose: () => void;
   projectId?: string;
+  onProjectCreated?: (project: { name: string; type: NovelType }) => void;
 }
 
-const AIChatPanel: React.FC<AIChatPanelProps> = ({ visible, onClose, projectId }) => {
+const AIChatPanel: React.FC<AIChatPanelProps> = ({ visible, onClose, projectId, onProjectCreated }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -30,6 +32,14 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ visible, onClose, projectId }
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (onProjectCreated) {
+      creativeDirector.setOnProjectCreateCallback((project) => {
+        onProjectCreated(project);
+      });
+    }
+  }, [onProjectCreated]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,6 +78,16 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ visible, onClose, projectId }
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      if (result.projectCreated && result.response) {
+        const match = result.response.match(/项目"([^"]+)"创建成功/);
+        if (match && onProjectCreated) {
+          const projectName = match[1];
+          const typeMatch = result.response.match(/@([^@]+)$/);
+          const projectType = (typeMatch ? typeMatch[1].trim() : '其他') as NovelType;
+          onProjectCreated({ name: projectName, type: projectType });
+        }
+      }
     } catch (error) {
       const errorMessage: ChatMessage = {
         id: `error_${Date.now()}`,

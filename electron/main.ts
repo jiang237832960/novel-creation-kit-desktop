@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell, Menu, Tray, globalShortcut,
 import path from 'path';
 import fs from 'fs';
 import Store from 'electron-store';
+import { createZeroTokenServer, getZeroTokenServer } from './zeroToken';
 
 const store = new Store();
 
@@ -1291,4 +1292,102 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
+});
+
+// ============ ZeroToken IPC Handlers ============
+
+interface Credentials {
+  cookie: string;
+  bearer?: string;
+  userAgent?: string;
+}
+
+ipcMain.handle('zero-token:start', async (_, port?: number) => {
+  try {
+    const server = createZeroTokenServer(port);
+    await server.start();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:stop', async () => {
+  try {
+    const server = getZeroTokenServer();
+    server.stop();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:status', async () => {
+  try {
+    const server = getZeroTokenServer();
+    return {
+      success: true,
+      port: server.getPort(),
+    };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:get-providers', async () => {
+  try {
+    const server = getZeroTokenServer();
+    return { success: true, providers: server.getProviders() };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:open-login', async (_, providerId: string) => {
+  try {
+    const server = getZeroTokenServer();
+    await server.openLoginWindow(providerId);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:capture-auth', async (_, providerId: string) => {
+  try {
+    const server = getZeroTokenServer();
+    const auth = await server.captureAuth(providerId);
+    return { success: true, auth };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:get-auth-status', async () => {
+  try {
+    const server = getZeroTokenServer();
+    return { success: true, status: server.getAuthStatus() };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:capture-from-chrome', async (_, providerId: string) => {
+  try {
+    const server = getZeroTokenServer();
+    const auth = await server.captureFromChrome(providerId);
+    return { success: true, auth };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('zero-token:clear-auth', async (_, providerId: string) => {
+  try {
+    const server = getZeroTokenServer();
+    server.clearAuth(providerId);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
 });

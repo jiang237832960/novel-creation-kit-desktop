@@ -1,19 +1,38 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+export interface ZeroTokenProvider {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiPath: string;
+  loginUrl: string;
+  models: {
+    id: string;
+    name: string;
+    contextWindow: number;
+    maxTokens: number;
+    reasoning?: boolean;
+  }[];
+}
+
+export interface ZeroTokenAuth {
+  provider: string;
+  cookie: string;
+  userAgent: string;
+  lastUpdate: string;
+}
+
 const electronAPI = {
-  // 路径
   getUserDocumentsPath: () => ipcRenderer.invoke('get-user-documents-path'),
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
   getGlobalResourcesPath: () => ipcRenderer.invoke('get-global-resources-path'),
   getProjectsPath: () => ipcRenderer.invoke('get-projects-path'),
   
-  // 项目管理
   createProject: (projectPath: string) => ipcRenderer.invoke('create-project', projectPath),
   deleteProject: (projectPath: string) => ipcRenderer.invoke('delete-project', projectPath),
   copyProject: (srcPath: string, destPath: string) => ipcRenderer.invoke('copy-project', srcPath, destPath),
   createBackup: (targetPath: string) => ipcRenderer.invoke('create-backup', targetPath),
   
-  // 文件操作
   readFile: (filePath: string) => ipcRenderer.invoke('read-file', filePath),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('write-file', filePath, content),
   listDirectory: (dirPath: string) => ipcRenderer.invoke('list-directory', dirPath),
@@ -22,17 +41,25 @@ const electronAPI = {
   getFileInfo: (filePath: string) => ipcRenderer.invoke('get-file-info', filePath),
   backupFile: (filePath: string) => ipcRenderer.invoke('backup-file', filePath),
   
-  // 外部链接
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   
-  // 设置存储
   storeGet: (key: string) => ipcRenderer.invoke('store-get', key),
   storeSet: (key: string, value: unknown) => ipcRenderer.invoke('store-set', key, value),
   
-  // 全局资源
   initGlobalResources: (basePath: string) => ipcRenderer.invoke('init-global-resources', basePath),
   
-  // 菜单事件
+  zeroToken: {
+    start: (port?: number) => ipcRenderer.invoke('zero-token:start', port),
+    stop: () => ipcRenderer.invoke('zero-token:stop'),
+    status: () => ipcRenderer.invoke('zero-token:status'),
+    getProviders: () => ipcRenderer.invoke('zero-token:get-providers'),
+    openLogin: (providerId: string) => ipcRenderer.invoke('zero-token:open-login', providerId),
+    captureAuth: (providerId: string) => ipcRenderer.invoke('zero-token:capture-auth', providerId),
+    captureFromChrome: (providerId: string) => ipcRenderer.invoke('zero-token:capture-from-chrome', providerId),
+    getAuthStatus: () => ipcRenderer.invoke('zero-token:get-auth-status'),
+    clearAuth: (providerId: string) => ipcRenderer.invoke('zero-token:clear-auth', providerId),
+  },
+
   onMenuNewProject: (callback: () => void) => {
     ipcRenderer.on('menu:new-project', callback);
     return () => ipcRenderer.removeListener('menu:new-project', callback);

@@ -1,3 +1,24 @@
+export interface ZeroTokenProviderConfig {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiPath: string;
+  loginUrl?: string;
+  models: {
+    id: string;
+    name: string;
+    contextWindow: number;
+    maxTokens: number;
+    reasoning?: boolean;
+  }[];
+}
+
+export interface AuthStatus {
+  provider: string;
+  authenticated: boolean;
+  lastUpdate?: string;
+}
+
 export interface ElectronAPI {
   getUserDocumentsPath: () => Promise<string>;
   getAppPath: () => Promise<string>;
@@ -23,6 +44,19 @@ export interface ElectronAPI {
     info?: { size: number; createdAt: string; modifiedAt: string; isDirectory: boolean };
     error?: string;
   }>;
+  initGlobalResources: (basePath: string) => Promise<{ success: boolean; error?: string }>;
+  zeroToken: {
+    start: (port?: number, authToken?: string) => Promise<{ success: boolean; error?: string }>;
+    stop: () => Promise<{ success: boolean; error?: string }>;
+    status: () => Promise<{ success: boolean; isRunning?: boolean; port?: number; error?: string }>;
+    getProviders: () => Promise<{ success: boolean; providers?: ZeroTokenProviderConfig[]; error?: string }>;
+    startAuth: (providerId: string) => Promise<{ success: boolean; error?: string }>;
+    captureCredentials: (providerId: string) => Promise<{ success: boolean; error?: string }>;
+    setCredentials: (providerId: string, credentials: { cookie: string; bearer?: string; userAgent?: string }) => Promise<{ success: boolean; error?: string }>;
+    getAuthStatus: () => Promise<{ success: boolean; status?: AuthStatus[]; error?: string }>;
+    clearCredentials: (providerId: string) => Promise<{ success: boolean; error?: string }>;
+    closeAuthWindow: () => Promise<{ success: boolean; error?: string }>;
+  };
   onMenuNewProject: (callback: () => void) => () => void;
   onMenuOpenProject: (callback: () => void) => () => void;
   onMenuSave: (callback: () => void) => () => void;
@@ -133,6 +167,9 @@ export interface LLMConfig {
 export interface ZeroTokenProvider {
   id: string;
   name: string;
+  baseUrl?: string;
+  apiPath?: string;
+  loginUrl?: string;
   status: 'configured' | 'not_configured' | 'error';
   models: ZeroTokenModel[];
 }

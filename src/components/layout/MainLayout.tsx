@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Layout, Menu, Typography, Badge, Tag } from 'antd';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   DashboardOutlined,
   FolderOutlined,
@@ -21,7 +21,7 @@ const menuItems = [
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },
 ];
 
-const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
+const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -69,7 +69,7 @@ const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
       </Sider>
       <Layout>
         <Content style={{ padding: 0, overflow: 'auto', background: '#f0f2f5' }}>
-          {children}
+          <Outlet />
         </Content>
       </Layout>
     </Layout>

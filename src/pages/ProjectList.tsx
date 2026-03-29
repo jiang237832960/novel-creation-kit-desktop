@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Button, Modal, Form, Input, Select, Typography, Empty, Tag, message, Space } from 'antd';
+import { Card, Row, Col, Button, Modal, Form, Input, Select, Typography, Empty, Tag, message, Space, Dropdown } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { PlusOutlined, FolderOpenOutlined, BookOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, FolderOpenOutlined, BookOutlined, DeleteOutlined, ClockCircleOutlined, MessageOutlined } from '@ant-design/icons';
 import { v4 as uuidv4 } from 'uuid';
 import { useProjectStore } from '../stores';
-import type { Project } from '../types';
+import type { Project, NovelType } from '../types';
+import AIChatPanel from '../components/chat/AIChatPanel';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -22,8 +23,61 @@ const ProjectList: React.FC = () => {
   const navigate = useNavigate();
   const { projects, basePath, addProject, removeProject } = useProjectStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+
+  const handleCreateProjectByChat = async (projectInfo: { name: string; type: NovelType }) => {
+    if (!window.electronAPI || !basePath) {
+      message.error('Electron API 不可用或基础路径未设置');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const projectId = uuidv4();
+      const projectPath = `${basePath}/${projectId}`;
+
+      const createResult = await window.electronAPI.createProject(projectPath);
+      if (!createResult.success) {
+        message.error(`创建项目失败: ${createResult.error}`);
+        return;
+      }
+
+      const projectInfoData = {
+        name: projectInfo.name,
+        type: projectInfo.type,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: 'active',
+      };
+
+      await window.electronAPI.writeFile(
+        `${projectPath}/project.json`,
+        JSON.stringify(projectInfoData, null, 2)
+      );
+
+      const newProject: Project = {
+        id: projectId,
+        name: projectInfo.name,
+        type: projectInfo.type,
+        path: projectPath,
+        createdAt: projectInfoData.createdAt,
+        updatedAt: projectInfoData.updatedAt,
+        status: 'active',
+      };
+
+      addProject(newProject);
+      message.success(`项目"${projectInfo.name}"创建成功！`);
+      setIsChatOpen(false);
+      navigate(`/projects/${projectId}`);
+    } catch (error) {
+      console.error('创建项目失败:', error);
+      message.error('创建项目失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateProject = async () => {
     try {
@@ -112,9 +166,26 @@ const ProjectList: React.FC = () => {
           <Title level={2} style={{ margin: 0 }}>项目列表</Title>
           <Text type="secondary">管理您的小说项目</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => setIsModalOpen(true)}>
-          新建项目
-        </Button>
+        <Dropdown menu={{
+          items: [
+            {
+              key: 'form',
+              icon: <PlusOutlined />,
+              label: '表单创建',
+              onClick: () => setIsModalOpen(true),
+            },
+            {
+              key: 'chat',
+              icon: <MessageOutlined />,
+              label: '对话创建',
+              onClick: () => setIsChatOpen(true),
+            },
+          ],
+        }} trigger={['click']}>
+          <Button type="primary" icon={<PlusOutlined />} size="large">
+            新建项目
+          </Button>
+        </Dropdown>
       </div>
 
       {projects.length === 0 ? (
@@ -221,6 +292,12 @@ const ProjectList: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      <AIChatPanel
+        visible={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        onProjectCreated={handleCreateProjectByChat}
+      />
     </div>
   );
 };

@@ -58,6 +58,7 @@ class SOPWorkflow {
       await this.syncAgentSkills();
 
       this.setPhase('initialization', {
+        name: '项目初始化',
         status: 'completed',
         endTime: Date.now(),
         results: {
@@ -102,6 +103,7 @@ class SOPWorkflow {
       await this.accumulateExperience(chapter, validationResults);
 
       this.setPhase('creation', {
+        name: '项目创作',
         status: 'completed',
         endTime: Date.now(),
         results: {
@@ -133,6 +135,7 @@ class SOPWorkflow {
       await this.updateGlobalResources(report);
 
       this.setPhase('completion', {
+        name: '项目完结',
         status: 'completed',
         endTime: Date.now(),
         results: report,
