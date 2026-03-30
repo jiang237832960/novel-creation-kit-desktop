@@ -232,13 +232,17 @@ class ZeroTokenServer {
       width: 1200,
       height: 800,
       title: `登录 ${provider.name}`,
+      show: false,
       webPreferences: {
         partition: `persist:zero-token-${providerId}`,
       },
     });
 
+    this.loginWindow.once('ready-to-show', () => {
+      this.loginWindow?.show();
+    });
+
     await this.loginWindow.loadURL(provider.loginUrl);
-    this.loginWindow.show();
   }
 
   async captureAuth(providerId: string): Promise<AuthState> {
