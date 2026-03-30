@@ -158,18 +158,42 @@ class CustomProvider implements LLMProvider {
     }
 
     try {
+      const body = {
+        model: model || 'custom',
+        messages,
+        temperature: temperature ?? 0.7,
+        max_tokens: maxTokens ?? 2000,
+      };
+
+      // Use Electron IPC proxy to avoid CORS issues in desktop app
+      if (window.electronAPI?.customApi) {
+        const result = await window.electronAPI.customApi.proxy({
+          endpoint,
+          apiKey,
+          body,
+        });
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error || 'API 请求失败',
+          };
+        }
+
+        return {
+          success: true,
+          content: result.data?.choices?.[0]?.message?.content || result.data?.content || '',
+        };
+      }
+
+      // Fallback to direct fetch for web version
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model: model || 'custom',
-          messages,
-          temperature: temperature ?? 0.7,
-          max_tokens: maxTokens ?? 2000,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {

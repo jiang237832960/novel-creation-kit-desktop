@@ -60,6 +60,11 @@ const electronAPI = {
     clearAuth: (providerId: string) => ipcRenderer.invoke('zero-token:clear-auth', providerId),
   },
 
+  customApi: {
+    proxy: (options: { endpoint: string; apiKey: string; body: any }) => 
+      ipcRenderer.invoke('custom-api:proxy', options),
+  },
+
   onMenuNewProject: (callback: () => void) => {
     ipcRenderer.on('menu:new-project', callback);
     return () => ipcRenderer.removeListener('menu:new-project', callback);

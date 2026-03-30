@@ -1391,3 +1391,29 @@ ipcMain.handle('zero-token:clear-auth', async (_, providerId: string) => {
     return { success: false, error: String(error) };
   }
 });
+
+// Custom API proxy to avoid CORS issues
+ipcMain.handle('custom-api:proxy', async (_, options: { endpoint: string; apiKey: string; body: any }) => {
+  try {
+    const { endpoint, apiKey, body } = options;
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: any = await response.json();
+    
+    if (!response.ok) {
+      return { success: false, error: data.error?.message || `API 请求失败: ${response.status}`, status: response.status };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});

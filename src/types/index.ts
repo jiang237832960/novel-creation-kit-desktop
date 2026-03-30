@@ -57,6 +57,14 @@ export interface ElectronAPI {
     clearCredentials: (providerId: string) => Promise<{ success: boolean; error?: string }>;
     closeAuthWindow: () => Promise<{ success: boolean; error?: string }>;
   };
+  customApi: {
+    proxy: (options: { endpoint: string; apiKey: string; body: any }) => Promise<{
+      success: boolean;
+      data?: any;
+      error?: string;
+      status?: number;
+    }>;
+  };
   onMenuNewProject: (callback: () => void) => () => void;
   onMenuOpenProject: (callback: () => void) => () => void;
   onMenuSave: (callback: () => void) => () => void;
