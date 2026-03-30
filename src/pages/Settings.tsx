@@ -104,7 +104,7 @@ const Settings: React.FC = () => {
                         extra={isCustomProvider ? '必填：输入你的 API 端点地址' : '可选：使用代理或自定义端点'}
                       >
                         <Input
-                          placeholder={isCustomProvider ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1'}
+                          placeholder={isCustomProvider ? 'https://api.example.com/v1' : 'https://api.openai.com/v1'}
                           disabled={!isCustomProvider}
                         />
                       </Form.Item>

@@ -158,6 +158,12 @@ class CustomProvider implements LLMProvider {
     }
 
     try {
+      // Ensure endpoint has proper path for OpenAI-compatible APIs
+      let fullEndpoint = endpoint;
+      if (!endpoint.includes('/v1/chat/completions')) {
+        fullEndpoint = endpoint.replace(/\/$/, '') + '/v1/chat/completions';
+      }
+
       const body = {
         model: model || 'custom',
         messages,
@@ -168,7 +174,7 @@ class CustomProvider implements LLMProvider {
       // Use Electron IPC proxy to avoid CORS issues in desktop app
       if (window.electronAPI?.customApi) {
         const result = await window.electronAPI.customApi.proxy({
-          endpoint,
+          endpoint: fullEndpoint,
           apiKey,
           body,
         });
@@ -187,7 +193,7 @@ class CustomProvider implements LLMProvider {
       }
 
       // Fallback to direct fetch for web version
-      const response = await fetch(endpoint, {
+      const response = await fetch(fullEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
