@@ -226,23 +226,54 @@ class ZeroTokenServer {
 
     if (this.loginWindow) {
       this.loginWindow.close();
+      this.loginWindow = null;
     }
 
-    this.loginWindow = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      title: `登录 ${provider.name}`,
-      show: false,
-      webPreferences: {
-        partition: `persist:zero-token-${providerId}`,
-      },
-    });
+    console.log(`[ZeroToken] Opening login window for ${provider.name} at ${provider.loginUrl}`);
 
-    this.loginWindow.once('ready-to-show', () => {
-      this.loginWindow?.show();
-    });
+    return new Promise((resolve, reject) => {
+      this.loginWindow = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        title: `登录 ${provider.name}`,
+        webPreferences: {
+          partition: `persist:zero-token-${providerId}`,
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
 
-    await this.loginWindow.loadURL(provider.loginUrl);
+      // Set timeout for loadURL
+      const timeout = setTimeout(() => {
+        console.error(`[ZeroToken] Login window load timeout for ${provider.name}`);
+        reject(new Error('登录窗口加载超时，请检查网络连接'));
+      }, 30000);
+
+      this.loginWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+        console.error(`[ZeroToken] Failed to load: ${errorCode} - ${errorDescription}`);
+        clearTimeout(timeout);
+        reject(new Error(`页面加载失败: ${errorDescription} (${errorCode})`));
+      });
+
+      this.loginWindow.webContents.on('did-finish-load', () => {
+        console.log(`[ZeroToken] Login window loaded successfully`);
+        clearTimeout(timeout);
+        this.loginWindow?.show();
+        resolve();
+      });
+
+      this.loginWindow.on('closed', () => {
+        console.log(`[ZeroToken] Login window closed`);
+        this.loginWindow = null;
+      });
+
+      // Load the login URL
+      this.loginWindow.loadURL(provider.loginUrl).catch((err) => {
+        console.error(`[ZeroToken] loadURL error: ${err.message}`);
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
   }
 
   async captureAuth(providerId: string): Promise<AuthState> {
