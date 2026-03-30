@@ -37,6 +37,11 @@ export interface ElectronAPI {
   openExternal: (url: string) => Promise<void>;
   storeGet: (key: string) => Promise<unknown>;
   storeSet: (key: string, value: unknown) => Promise<{ success: boolean }>;
+  conversation: {
+    save: (messages: any[]) => Promise<{ success: boolean; error?: string }>;
+    load: () => Promise<{ success: boolean; messages?: any[]; error?: string }>;
+    clear: () => Promise<{ success: boolean; error?: string }>;
+  };
   backupFile: (filePath: string) => Promise<{ success: boolean; backupPath?: string; error?: string }>;
   fileExists: (filePath: string) => Promise<boolean>;
   getFileInfo: (filePath: string) => Promise<{

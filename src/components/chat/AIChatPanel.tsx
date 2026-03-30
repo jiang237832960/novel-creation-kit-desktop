@@ -21,17 +21,67 @@ interface AIChatPanelProps {
 }
 
 const AIChatPanel: React.FC<AIChatPanelProps> = ({ visible, onClose, projectId, onProjectCreated }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: '你好！我是创作总监，是你的唯一创作入口。\n\n我可以帮你：\n1. 解析创作需求，创建小说项目\n2. 调度Agent执行创作任务\n3. 解答创作相关问题\n4. 审核全局规则\n\n请告诉我你想要创作什么类型的小说？',
-      timestamp: new Date().toISOString(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 加载对话历史
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (window.electronAPI?.conversation) {
+        const result = await window.electronAPI.conversation.load();
+        if (result.success && result.messages && result.messages.length > 0) {
+          // 转换历史消息格式
+          const historyMessages: ChatMessage[] = result.messages.map((msg: any, idx: number) => ({
+            id: `history_${idx}`,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: msg.timestamp || new Date().toISOString(),
+          }));
+          setMessages(historyMessages);
+        } else {
+          // 没有历史，显示初始欢迎消息
+          setMessages([{
+            id: '1',
+            role: 'assistant',
+            content: '你好！我是创作总监，是你的唯一创作入口。\n\n我可以帮你：\n1. 解析创作需求，创建小说项目\n2. 调度Agent执行创作任务\n3. 解答创作相关问题\n4. 审核全局规则\n\n请告诉我你想要创作什么类型的小说？',
+            timestamp: new Date().toISOString(),
+          }]);
+        }
+      } else {
+        // Web版本或没有electronAPI，显示欢迎消息
+        setMessages([{
+          id: '1',
+          role: 'assistant',
+          content: '你好！我是创作总监，是你的唯一创作入口。\n\n我可以帮你：\n1. 解析创作需求，创建小说项目\n2. 调度Agent执行创作任务\n3. 解答创作相关问题\n4. 审核全局规则\n\n请告诉我你想要创作什么类型的小说？',
+          timestamp: new Date().toISOString(),
+        }]);
+      }
+      setIsInitialized(true);
+    };
+    
+    if (visible) {
+      loadHistory();
+    }
+  }, [visible]);
+
+  // 保存对话历史
+  useEffect(() => {
+    const saveHistory = async () => {
+      if (isInitialized && messages.length > 0 && window.electronAPI?.conversation) {
+        const messagesToSave = messages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+        }));
+        await window.electronAPI.conversation.save(messagesToSave);
+      }
+    };
+    
+    saveHistory();
+  }, [messages, isInitialized]);
 
   useEffect(() => {
     if (onProjectCreated) {

@@ -656,6 +656,34 @@ ipcMain.handle('store-set', async (_, key: string, value: unknown) => {
   return { success: true };
 });
 
+// 对话历史持久化
+ipcMain.handle('conversation:save', async (_, messages: any[]) => {
+  try {
+    store.set('conversationHistory', messages);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('conversation:load', async () => {
+  try {
+    const messages = store.get('conversationHistory', []);
+    return { success: true, messages };
+  } catch (error) {
+    return { success: false, error: String(error), messages: [] };
+  }
+});
+
+ipcMain.handle('conversation:clear', async () => {
+  try {
+    store.delete('conversationHistory');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
 // 删除项目
 ipcMain.handle('delete-project', async (_, projectPath: string) => {
   try {

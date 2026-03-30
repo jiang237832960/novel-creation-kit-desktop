@@ -277,6 +277,8 @@ class LLMService {
   private providers: Map<string, LLMProvider> = new Map();
   private currentProvider: LLMProvider;
   private config: LLMConfig;
+  private conversationHistory: LLMMessage[] = [];
+  private systemPrompt: string = '';
 
   constructor() {
     this.providers.set('openai', new OpenAIProvider());
@@ -294,6 +296,30 @@ class LLMService {
       temperature: 0.7,
       maxTokens: 2000,
     };
+
+    this.systemPrompt = this.getDefaultSystemPrompt();
+  }
+
+  private getDefaultSystemPrompt(): string {
+    return `你是创作总监，是用户与系统的唯一交互入口。
+
+核心职责：
+1. 精准解析用户的创作需求，提取核心参数（项目名称、类型、题材、风格）
+2. 调度对应的Agent执行专属技能
+3. 审核全局技能规则，确保执行不偏离
+4. 管控创作全流程，确保每个环节执行到位
+
+重要规则：
+- 一旦用户提供了信息（书名、类型、风格、字数等），必须记住并在后续对话中使用
+- 不重复询问用户已确认的信息
+- 严格按照用户指令执行，不额外询问已提供的内容
+- 如果用户要求直接开始创作，立即启动工作流，不要反复询问
+
+工作流程：
+- 接收用户输入，判断意图（创建项目/继续创作/修改/查询）
+- 记住用户的所有创作参数
+- 调用对应Agent执行任务
+- 汇总结果反馈给用户`;
   }
 
   setConfig(config: Partial<LLMConfig>): void {
@@ -313,12 +339,36 @@ class LLMService {
     return this.currentProvider.sendMessage(messages, this.config);
   }
 
-  getProviderName(): string {
-    return this.currentProvider.name;
+  async sendMessageWithHistory(userMessage: string): Promise<LLMResponse> {
+    // 添加用户消息到历史
+    this.conversationHistory.push({ role: 'user', content: userMessage });
+    
+    // 构建完整的消息列表（系统提示 + 历史）
+    const allMessages: LLMMessage[] = [
+      { role: 'system', content: this.systemPrompt },
+      ...this.conversationHistory,
+    ];
+
+    const response = await this.currentProvider.sendMessage(allMessages, this.config);
+
+    // 添加助手回复到历史
+    if (response.success && response.content) {
+      this.conversationHistory.push({ role: 'assistant', content: response.content });
+    }
+
+    return response;
   }
 
-  getAvailableModels(): string[] {
-    return this.currentProvider.getModels();
+  getConversationHistory(): LLMMessage[] {
+    return [...this.conversationHistory];
+  }
+
+  clearConversationHistory(): void {
+    this.conversationHistory = [];
+  }
+
+  setSystemPrompt(prompt: string): void {
+    this.systemPrompt = prompt;
   }
 
   isConfigured(): boolean {
@@ -426,6 +476,9 @@ export class CreativeDirector {
       userInput.includes('想写') ||
       userInput.includes('想创作') ||
       userInput.includes('写小说') ||
+      userInput.includes('开始') ||
+      userInput.includes('构思') ||
+      userInput.includes('构思') ||
       extractedInfo.name ||
       extractedInfo.type;
 
@@ -433,37 +486,33 @@ export class CreativeDirector {
     if (isCreateProjectIntent) {
       systemPrompt = this.buildProjectCreationPrompt(userInput);
     } else {
-      systemPrompt = `你是创作总监，是用户与系统的唯一交互入口。你的职责包括：
+      systemPrompt = `你是创作总监，是用户与系统的唯一交互入口。
+
+核心职责：
 1. 精准解析用户的创作需求，提取核心参数
 2. 调度对应的Agent执行专属技能
 3. 审核全局技能规则，确保执行不偏离
 4. 管控创作全流程，确保每个环节执行到位
 
-当用户提出创作需求时，你需要：
-1. 理解用户想要创作什么（类型、题材、风格）
-2. 判断需要启动什么样的工作流
-3. 将任务分解并分配给合适的Agent
+重要规则：
+- 一旦用户提供了信息（书名、类型、风格、字数等），必须记住
+- 不重复询问用户已确认的信息
+- 严格按照用户指令执行，不额外询问
 
-当前系统支持的Agent有：
-- 总导演：章节创作调度、任务拆解
-- 档案员：上下文组装、伏笔追踪
-- 文风师：文风标准制定
-- 编剧：场景设计、剧情架构
-- 写手：正文初稿写作
-- 字数管控师：字数监控
-- 润色师：文本润色
-- 验证官：全维度校验
-- 修订师：问题修复
-- 学习代理：经验沉淀
+当前已确认的创作参数：
+- 项目名称：${this.pendingProject.name || '待定'}
+- 小说类型：${this.pendingProject.type || '待定'}
+- 目标字数：${this.pendingProject.type ? '50万字（番茄平台标准）' : '待定'}
+- 发布平台：${this.pendingProject.type ? '番茄' : '待定'}
+- 风格：${this.pendingProject.type ? '轻松幽默' : '待定'}
 
-请以创作总监的身份回复用户，并执行相应的工作流。`;
+请根据已确认的参数，直接开始创作工作流，不要再询问用户。`;
     }
 
     try {
-      const response = await this.llm.sendMessage([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userInput }
-      ]);
+      // 使用带历史的消息发送
+      this.llm.setSystemPrompt(systemPrompt);
+      const response = await this.llm.sendMessageWithHistory(userInput);
 
       if (!response.success) {
         return { success: false, error: response.error };

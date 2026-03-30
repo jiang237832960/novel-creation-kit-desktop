@@ -46,6 +46,12 @@ const electronAPI = {
   storeGet: (key: string) => ipcRenderer.invoke('store-get', key),
   storeSet: (key: string, value: unknown) => ipcRenderer.invoke('store-set', key, value),
   
+  conversation: {
+    save: (messages: any[]) => ipcRenderer.invoke('conversation:save', messages),
+    load: () => ipcRenderer.invoke('conversation:load'),
+    clear: () => ipcRenderer.invoke('conversation:clear'),
+  },
+  
   initGlobalResources: (basePath: string) => ipcRenderer.invoke('init-global-resources', basePath),
   
   zeroToken: {
