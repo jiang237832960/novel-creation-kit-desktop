@@ -65,6 +65,38 @@ const electronAPI = {
       ipcRenderer.invoke('custom-api:proxy', options),
   },
 
+  quality: {
+    gateCheck: (options: { text: string; chapterNumber?: number }) => 
+      ipcRenderer.invoke('quality:gate-check', options),
+    aiTraceCheck: (options: { text: string }) => 
+      ipcRenderer.invoke('quality:ai-trace-check', options),
+    semanticCheck: (options: { text: string }) => 
+      ipcRenderer.invoke('quality:semantic-check', options),
+    wordCount: (options: { text: string }) => 
+      ipcRenderer.invoke('quality:word-count', options),
+  },
+
+  blackboard: {
+    create: (options: { projectPath: string; chapterNum: number; content: any }) => 
+      ipcRenderer.invoke('blackboard:create', options),
+    read: (options: { projectPath: string; chapterNum: number }) => 
+      ipcRenderer.invoke('blackboard:read', options),
+    update: (options: { projectPath: string; chapterNum: number; content: string }) => 
+      ipcRenderer.invoke('blackboard:update', options),
+  },
+
+  truthFiles: {
+    readAll: (options: { projectPath: string }) => 
+      ipcRenderer.invoke('truthfiles:read-all', options),
+    write: (options: { filePath: string; content: string }) => 
+      ipcRenderer.invoke('truthfiles:write', options),
+  },
+
+  document: {
+    integrityCheck: (options: { projectPath: string; chapterNum: number; step: string }) => 
+      ipcRenderer.invoke('document:integrity-check', options),
+  },
+
   onMenuNewProject: (callback: () => void) => {
     ipcRenderer.on('menu:new-project', callback);
     return () => ipcRenderer.removeListener('menu:new-project', callback);

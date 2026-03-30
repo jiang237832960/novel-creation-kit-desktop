@@ -1417,3 +1417,439 @@ ipcMain.handle('custom-api:proxy', async (_, options: { endpoint: string; apiKey
     return { success: false, error: String(error) };
   }
 });
+
+// Quality gate check - 11 hard rules validation
+ipcMain.handle('quality:gate-check', async (_, options: { text: string; chapterNumber?: number }) => {
+  try {
+    const { text, chapterNumber = 1 } = options;
+    const results: { id: string; rule: string; severity: string; matchedText?: string; position?: number }[] = [];
+    
+    // R01: 禁止"不是……而是……"句式
+    const r01Matches = [...text.matchAll(/不是[^，。]*[，。]而是[^，。]*[，。]/g)];
+    for (const match of r01Matches) {
+      results.push({ id: 'R01', rule: '禁止"不是……而是……"句式', severity: 'error', matchedText: match[0], position: match.index });
+    }
+    
+    // R02: 禁止破折号"——"
+    const r02Matches = [...text.matchAll(/——/g)];
+    for (const match of r02Matches) {
+      results.push({ id: 'R02', rule: '禁止破折号"——"', severity: 'error', matchedText: match[0], position: match.index });
+    }
+    
+    // R03: 转折词密度 ≤ 1次/3000字
+    const turningWords = ['但是', '然而', '不过', '可是', '却', '只是', '虽然', '尽管'];
+    const wordCount = text.length;
+    const turningCount = turningWords.reduce((count, word) => count + (text.match(new RegExp(word, 'g')) || []).length, 0);
+    const density = (turningCount / wordCount) * 3000;
+    if (density > 1) {
+      results.push({ id: 'R03', rule: '转折词密度 ≤ 1次/3000字', severity: 'warning' });
+    }
+    
+    // R04: 高疲劳词 ≤ 1次/章
+    const fatigueWords = ['突然', '然后', '竟然', '居然', '十分', '非常', '特别', '相当'];
+    const fatigueCount = fatigueWords.reduce((count, word) => count + (text.match(new RegExp(word, 'g')) || []).length, 0);
+    if (fatigueCount > 1) {
+      results.push({ id: 'R04', rule: '高疲劳词 ≤ 1次/章', severity: 'warning' });
+    }
+    
+    // R05: 禁止元叙事
+    const metaPatterns = [/读者/g, /前[几一二三四五六七八九十]+章/g, /上文[中提到]/g];
+    for (const pattern of metaPatterns) {
+      const matches = [...text.matchAll(pattern)];
+      for (const match of matches) {
+        results.push({ id: 'R05', rule: '禁止元叙事', severity: 'warning', matchedText: match[0], position: match.index });
+      }
+    }
+    
+    // R06: 禁止报告术语
+    const reportTerms = ['综上所述', '总而言之', '值得注意的是', '不可否认', '从角度来看'];
+    for (const term of reportTerms) {
+      const matches = [...text.matchAll(new RegExp(term, 'g'))];
+      for (const match of matches) {
+        results.push({ id: 'R06', rule: '禁止报告术语', severity: 'error', matchedText: match[0], position: match.index });
+      }
+    }
+    
+    // R07: 禁止作者说教词
+    const preachWords = ['我们应该', '你必须', '大家都要', '必须指出'];
+    for (const word of preachWords) {
+      const matches = [...text.matchAll(new RegExp(word, 'g'))];
+      for (const match of matches) {
+        results.push({ id: 'R07', rule: '禁止作者说教词', severity: 'warning', matchedText: match[0], position: match.index });
+      }
+    }
+    
+    // R08: 禁止集体反应套话
+    const groupReaction = [/众人/g, /大家/g, /所有人都/g];
+    for (const pattern of groupReaction) {
+      const matches = [...text.matchAll(pattern)];
+      for (const match of matches) {
+        results.push({ id: 'R08', rule: '禁止集体反应套话', severity: 'warning', matchedText: match[0], position: match.index });
+      }
+    }
+    
+    // R09: 禁止连续4句"了"字
+    const lePattern = /[^。！？]*了[^。！？]*[。！？][^。！？]*了[^。！？]*[。！？][^。！？]*了[^。！？]*[。！？][^。！？]*了/g;
+    const leMatches = [...text.matchAll(lePattern)];
+    for (const match of leMatches) {
+      results.push({ id: 'R09', rule: '禁止连续4句"了"字', severity: 'warning', matchedText: match[0].substring(0, 50) + '...', position: match.index });
+    }
+    
+    // R10: 段落长度 ≤ 300字
+    const paragraphs = text.split(/\n\n+/);
+    for (let i = 0; i < paragraphs.length; i++) {
+      if (paragraphs[i].length > 300) {
+        results.push({ id: 'R10', rule: '段落长度 ≤ 300字', severity: 'warning', matchedText: `段落${i + 1}: ${paragraphs[i].substring(0, 30)}...`, position: 0 });
+      }
+    }
+    
+    const errorCount = results.filter(r => r.severity === 'error').length;
+    const warningCount = results.filter(r => r.severity === 'warning').length;
+    
+    return {
+      success: true,
+      results,
+      summary: {
+        totalIssues: results.length,
+        errorCount,
+        warningCount,
+        pass: errorCount === 0,
+      },
+    };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+// AI trace detection - detect AI-generated content patterns
+ipcMain.handle('quality:ai-trace-check', async (_, options: { text: string }) => {
+  try {
+    const { text } = options;
+    const issues: { type: string; description: string; severity: string; matchedText?: string }[] = [];
+    
+    // Academic expressions
+    const academicPatterns = ['我认为', '我们应该', '总而言之', '综上所述', '值得注意的是', '不可否认'];
+    for (const pattern of academicPatterns) {
+      const matches = [...text.matchAll(new RegExp(pattern, 'g'))];
+      for (const match of matches) {
+        issues.push({ type: '学术化表达', description: '使用学术论文式语言', severity: 'high', matchedText: match[0] });
+      }
+    }
+    
+    // Mechanical transitions
+    const mechanicalPatterns = [
+      /首先[^，]*[，]其次[^，]*[，]然后[^，]*[，]接着[^，]*[，]最后/g,
+      /一方面[^，]*[，]另一方面[^，]*[，]此外[^，]*[，]另外/g,
+    ];
+    for (const pattern of mechanicalPatterns) {
+      const matches = [...text.matchAll(pattern)];
+      for (const match of matches) {
+        issues.push({ type: '机械连接', description: '使用机械的逻辑连接词堆砌', severity: 'medium', matchedText: match[0].substring(0, 50) + '...' });
+      }
+    }
+    
+    // Empty adjectives
+    const emptyAdjectives = ['美丽的风景', '漂亮的画面', '优秀的表现', '很好的效果'];
+    for (const adj of emptyAdjectives) {
+      const matches = [...text.matchAll(new RegExp(adj, 'g'))];
+      for (const match of matches) {
+        issues.push({ type: '空洞形容词', description: '使用空泛形容词', severity: 'low', matchedText: match[0] });
+      }
+    }
+    
+    // Mechanical dialogue tags
+    const mechDialogue = [/说道[，：]/g, /表示[，：]/g, /认为[，：]/g];
+    for (const pattern of mechDialogue) {
+      const matches = [...text.matchAll(pattern)];
+      for (const match of matches) {
+        issues.push({ type: '缺乏人味', description: '对话标签过于机械', severity: 'high', matchedText: match[0] });
+      }
+    }
+    
+    // Calculate AI trace score (0-10, higher is better)
+    const baseScore = 10.0;
+    const deductions = issues.reduce((sum, issue) => {
+      if (issue.severity === 'high') return sum + 1.5;
+      if (issue.severity === 'medium') return sum + 1.0;
+      return sum + 0.5;
+    }, 0);
+    const aiTraceScore = Math.max(0, Math.min(10, baseScore - deductions));
+    
+    return {
+      success: true,
+      issues,
+      aiTraceScore,
+      status: aiTraceScore >= 8 ? 'excellent' : aiTraceScore >= 5 ? 'pass' : 'fail',
+      summary: {
+        totalIssues: issues.length,
+        highIssues: issues.filter(i => i.severity === 'high').length,
+        mediumIssues: issues.filter(i => i.severity === 'medium').length,
+        lowIssues: issues.filter(i => i.severity === 'low').length,
+      },
+    };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+// Semantic similarity check - detect repetitive content
+ipcMain.handle('quality:semantic-check', async (_, options: { text: string }) => {
+  try {
+    const { text } = options;
+    const sentences = text.split(/[。！？.!?]+/).filter(s => s.trim().length > 10);
+    
+    // Calculate sentence similarity using Jaccard index
+    const calculateSimilarity = (s1: string, s2: string): number => {
+      const words1 = new Set(s1.match(/[\u4e00-\u9fa5]+/g) || []);
+      const words2 = new Set(s2.match(/[\u4e00-\u9fa5]+/g) || []);
+      if (words1.size === 0 || words2.size === 0) return 0;
+      const intersection = new Set([...words1].filter(x => words2.has(x)));
+      const union = new Set([...words1, ...words2]);
+      return intersection.size / union.size;
+    };
+    
+    // Find high similarity pairs
+    const highSimilarPairs: { s1: string; s2: string; similarity: number }[] = [];
+    for (let i = 0; i < Math.min(sentences.length, 50); i++) {
+      for (let j = i + 1; j < Math.min(sentences.length, 50); j++) {
+        const sim = calculateSimilarity(sentences[i], sentences[j]);
+        if (sim > 0.7) {
+          highSimilarPairs.push({ s1: sentences[i].substring(0, 30), s2: sentences[j].substring(0, 30), similarity: sim });
+        }
+      }
+    }
+    
+    // Find frequent phrases
+    const phraseFrequency = new Map<string, number>();
+    const fourCharPhrases = text.match(/[\u4e00-\u9fa5]{4}/g) || [];
+    for (const phrase of fourCharPhrases) {
+      phraseFrequency.set(phrase, (phraseFrequency.get(phrase) || 0) + 1);
+    }
+    
+    const frequentPhrases = [...phraseFrequency.entries()]
+      .filter(([_, count]) => count > 3)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([phrase, count]) => ({ phrase, count }));
+    
+    const avgSimilarity = highSimilarPairs.length > 0 
+      ? highSimilarPairs.reduce((sum, p) => sum + p.similarity, 0) / highSimilarPairs.length 
+      : 0;
+    
+    return {
+      success: true,
+      highSimilarPairs,
+      frequentPhrases,
+      avgSimilarity,
+      status: avgSimilarity > 0.6 ? 'warning' : 'pass',
+      suggestions: [
+        ...(avgSimilarity > 0.6 ? ['句子间相似度较高，建议增加句式变化'] : []),
+        ...(frequentPhrases.length > 0 ? [`存在${frequentPhrases.length}个高频短语，建议替换为近义词`] : []),
+      ],
+    };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+// Word count analysis
+ipcMain.handle('quality:word-count', async (_, options: { text: string }) => {
+  try {
+    const { text } = options;
+    
+    // Count Chinese characters
+    const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const words = (text.match(/[\u4e00-\u9fa5]+/g) || []).length;
+    const sentences = (text.split(/[。！？.!?]+/).filter(s => s.trim().length > 0)).length;
+    const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0).length;
+    
+    // Count punctuation
+    const commas = (text.match(/，/g) || []).length;
+    const periods = (text.match(/[。！？]/g) || []).length;
+    
+    // Calculate average paragraph length
+    const avgParagraphLength = paragraphs > 0 ? Math.round(chineseChars / paragraphs) : 0;
+    
+    // Determine if within standard range (2000-2200 characters for a chapter)
+    const inRange = chineseChars >= 1800 && chineseChars <= 2500;
+    
+    return {
+      success: true,
+      charCount: chineseChars,
+      wordCount: words,
+      sentenceCount: sentences,
+      paragraphCount: paragraphs,
+      avgParagraphLength,
+      punctuation: { commas, periods },
+      status: inRange ? 'pass' : chineseChars < 1800 ? 'too_short' : 'too_long',
+      suggestions: [
+        ...(chineseChars < 1800 ? [`字数不足，还需${1800 - chineseChars}字`] : []),
+        ...(chineseChars > 2500 ? [`字数超标，需精简${chineseChars - 2500}字`] : []),
+      ],
+    };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+// Blackboard operations
+ipcMain.handle('blackboard:create', async (_, options: { projectPath: string; chapterNum: number; content: any }) => {
+  try {
+    const { projectPath, chapterNum, content } = options;
+    const blackboardPath = path.join(projectPath, `黑板_第${chapterNum}章.md`);
+    
+    const blackboardContent = `# 黑板_第${chapterNum}章
+
+创建时间: ${new Date().toISOString()}
+
+## 人物状态
+
+${content.characterStates?.map((s: any) => `- ${s.name}: ${s.status} (${s.location}, ${s.emotion})`).join('\n') || '（待填充）'}
+
+## 场景设计
+
+${content.sceneDesign?.scenes?.map((scene: any, idx: number) => `
+### 场景${idx + 1}: ${scene.name}
+- 地点: ${scene.location}
+- 时间: ${scene.time}
+- 关键点: ${scene.keyPoints?.join(', ') || '（待填充）'}
+`).join('\n') || '（待填充）'}
+
+## 关键台词
+
+${content.keyDialogues?.map((d: any) => `- ${d.character}: "${d.content}" (目的: ${d.purpose})`).join('\n') || '（待填充）'}
+
+## 伏笔处理
+
+${content.hooks?.map((h: any) => `- [${h.type}] ${h.content} (位置: ${h.position})`).join('\n') || '（待填充）'}
+
+## 人物状态变化
+
+${content.characterStateChanges?.map((c: any) => `- ${c.character}: ${c.before} → ${c.after} (原因: ${c.reason})`).join('\n') || '（待填充）'}
+
+---
+更新时间: ${new Date().toISOString()}
+`;
+    
+    fs.writeFileSync(blackboardPath, blackboardContent, 'utf-8');
+    return { success: true, path: blackboardPath };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('blackboard:read', async (_, options: { projectPath: string; chapterNum: number }) => {
+  try {
+    const { projectPath, chapterNum } = options;
+    const blackboardPath = path.join(projectPath, `黑板_第${chapterNum}章.md`);
+    
+    if (!fs.existsSync(blackboardPath)) {
+      return { success: false, error: '黑板文档不存在' };
+    }
+    
+    const content = fs.readFileSync(blackboardPath, 'utf-8');
+    return { success: true, content, path: blackboardPath };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('blackboard:update', async (_, options: { projectPath: string; chapterNum: number; content: string }) => {
+  try {
+    const { projectPath, chapterNum, content } = options;
+    const blackboardPath = path.join(projectPath, `黑板_第${chapterNum}章.md`);
+    
+    fs.writeFileSync(blackboardPath, content, 'utf-8');
+    return { success: true, path: blackboardPath };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+// Truth Files operations
+ipcMain.handle('truthfiles:read-all', async (_, options: { projectPath: string }) => {
+  try {
+    const { projectPath } = options;
+    const truthFileNames = [
+      'current_state.md',
+      'resource_ledger.md', 
+      'pending_hooks.md',
+      'chapter_summaries.md',
+      'subplot_board.md',
+      'emotional_arcs.md',
+      'character_matrix.md',
+    ];
+    
+    const files: { name: string; content: string; path: string }[] = [];
+    
+    for (const name of truthFileNames) {
+      const filePath = path.join(projectPath, name);
+      if (fs.existsSync(filePath)) {
+        files.push({
+          name,
+          content: fs.readFileSync(filePath, 'utf-8'),
+          path: filePath,
+        });
+      }
+    }
+    
+    return { success: true, files };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('truthfiles:write', async (_, options: { filePath: string; content: string }) => {
+  try {
+    const { filePath, content } = options;
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+// Document integrity check
+ipcMain.handle('document:integrity-check', async (_, options: { projectPath: string; chapterNum: number; step: string }) => {
+  try {
+    const { projectPath, chapterNum, step } = options;
+    const volumePath = path.join(projectPath, '第1卷-初入江湖');
+    const missingDocs: string[] = [];
+    
+    const checks: Record<string, { path: string; description: string }[]> = {
+      step4: [
+        { path: path.join(volumePath, '细纲', `第${chapterNum}章细纲.md`), description: '章节细纲' },
+        { path: path.join(projectPath, `黑板_第${chapterNum}章.md`), description: '黑板文档' },
+      ],
+      step5: [
+        { path: path.join(volumePath, '细纲', `第${chapterNum}章细纲.md`), description: '章节细纲' },
+        { path: path.join(projectPath, `黑板_第${chapterNum}章.md`), description: '黑板文档' },
+      ],
+      step8: [
+        { path: path.join(projectPath, 'tracking', `验证报告_第${chapterNum}章.md`), description: '验证报告' },
+      ],
+      step10: [
+        { path: path.join(volumePath, '细纲', `第${chapterNum}章细纲.md`), description: '章节细纲' },
+        { path: path.join(volumePath, '正文', `第${chapterNum}章.md`), description: '章节正文' },
+        { path: path.join(projectPath, `黑板_第${chapterNum}章.md`), description: '黑板文档' },
+        { path: path.join(projectPath, 'tracking', `验证报告_第${chapterNum}章.md`), description: '验证报告' },
+      ],
+    };
+    
+    const requiredDocs = checks[step] || [];
+    
+    for (const doc of requiredDocs) {
+      if (!fs.existsSync(doc.path)) {
+        missingDocs.push(`${doc.description}: ${doc.path}`);
+      }
+    }
+    
+    return {
+      success: true,
+      pass: missingDocs.length === 0,
+      missingDocs,
+    };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
