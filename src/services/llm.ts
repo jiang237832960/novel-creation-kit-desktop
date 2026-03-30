@@ -273,12 +273,28 @@ class ZeroTokenProvider implements LLMProvider {
   }
 }
 
+interface MemoryBlock {
+  id: string;
+  type: 'project_info' | 'user_preference' | 'conversation_summary' | 'key_decision';
+  content: string;
+  timestamp: string;
+  importance: number;
+}
+
 class LLMService {
   private providers: Map<string, LLMProvider> = new Map();
   private currentProvider: LLMProvider;
   private config: LLMConfig;
   private conversationHistory: LLMMessage[] = [];
   private systemPrompt: string = '';
+  private memoryBlocks: MemoryBlock[] = [];
+  private projectContext: {
+    name?: string;
+    type?: string;
+    platform?: string;
+    style?: string;
+    wordCount?: string;
+  } = {};
 
   constructor() {
     this.providers.set('openai', new OpenAIProvider());
@@ -298,6 +314,7 @@ class LLMService {
     };
 
     this.systemPrompt = this.getDefaultSystemPrompt();
+    this.loadMemoryBlocks();
   }
 
   private getDefaultSystemPrompt(): string {
@@ -310,16 +327,114 @@ class LLMService {
 4. 管控创作全流程，确保每个环节执行到位
 
 重要规则：
-- 一旦用户提供了信息（书名、类型、风格、字数等），必须记住并在后续对话中使用
+- 一旦用户提供了信息（书名、类型、风格、字数等），必须记住
 - 不重复询问用户已确认的信息
-- 严格按照用户指令执行，不额外询问已提供的内容
-- 如果用户要求直接开始创作，立即启动工作流，不要反复询问
+- 严格按照用户指令执行，不额外询问
+- 如果用户要求直接开始创作，立即启动工作流
 
-工作流程：
-- 接收用户输入，判断意图（创建项目/继续创作/修改/查询）
-- 记住用户的所有创作参数
-- 调用对应Agent执行任务
-- 汇总结果反馈给用户`;
+当前已确认的创作参数：
+${this.getProjectContextSummary()}
+
+你的回复应该：
+- 直接执行用户指令，不要重复询问已提供的信息
+- 如果信息不足，先基于已知参数推断执行
+- 定期将关键信息存入记忆块`;
+  }
+
+  private getProjectContextSummary(): string {
+    if (Object.keys(this.projectContext).length === 0) {
+      return '（暂无已确认的创作参数）';
+    }
+    return Object.entries(this.projectContext)
+      .map(([key, value]) => `- ${key}: ${value || '待定'}`)
+      .join('\n');
+  }
+
+  updateProjectContext(updates: Partial<typeof LLMService.prototype.projectContext>): void {
+    this.projectContext = { ...this.projectContext, ...updates };
+    this.persistMemoryBlocks();
+    this.updateSystemPrompt();
+  }
+
+  getProjectContext(): typeof this.projectContext {
+    return { ...this.projectContext };
+  }
+
+  addMemoryBlock(type: MemoryBlock['type'], content: string, importance: number = 5): void {
+    const block: MemoryBlock = {
+      id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      type,
+      content,
+      timestamp: new Date().toISOString(),
+      importance,
+    };
+    this.memoryBlocks.push(block);
+    this.persistMemoryBlocks();
+  }
+
+  getMemoryBlocks(type?: MemoryBlock['type']): MemoryBlock[] {
+    if (type) {
+      return this.memoryBlocks.filter(b => b.type === type);
+    }
+    return [...this.memoryBlocks].sort((a, b) => b.importance - a.importance);
+  }
+
+  private persistMemoryBlocks(): void {
+    const data = {
+      memoryBlocks: this.memoryBlocks,
+      projectContext: this.projectContext,
+    };
+    localStorage.setItem('llm_memory_blocks', JSON.stringify(data));
+  }
+
+  private loadMemoryBlocks(): void {
+    try {
+      const stored = localStorage.getItem('llm_memory_blocks');
+      if (stored) {
+        const data = JSON.parse(stored);
+        this.memoryBlocks = data.memoryBlocks || [];
+        this.projectContext = data.projectContext || {};
+        this.updateSystemPrompt();
+      }
+    } catch (e) {
+      console.warn('Failed to load memory blocks:', e);
+    }
+  }
+
+  clearMemory(): void {
+    this.memoryBlocks = [];
+    this.projectContext = {};
+    this.conversationHistory = [];
+    localStorage.removeItem('llm_memory_blocks');
+    this.updateSystemPrompt();
+  }
+
+  private updateSystemPrompt(): void {
+    this.systemPrompt = this.getDefaultSystemPrompt();
+  }
+
+  private extractProjectInfoFromText(text: string): void {
+    const patterns = {
+      name: /书名[：:]\s*["']?([^"'@\n]+)["']?/i,
+      type: /(?:类型|题材|分类)[：:]\s*["']?([^"'@\n]+)["']?/i,
+      style: /(?:风格|文风)[：:]\s*["']?([^"'@\n]+)["']?/i,
+      wordCount: /(\d+\s*万?[字章节])/i,
+      platform: /(?:平台|发布)[：:]\s*["']?([^"'@\n]+)["']?/i,
+    };
+
+    for (const [key, pattern] of Object.entries(patterns)) {
+      const match = text.match(pattern);
+      if (match) {
+        const value = match[1].trim();
+        if (value && value !== '待定') {
+          (this.projectContext as any)[key] = value;
+        }
+      }
+    }
+
+    if (Object.keys(this.projectContext).length > 0) {
+      this.persistMemoryBlocks();
+    }
   }
 
   setConfig(config: Partial<LLMConfig>): void {
@@ -340,13 +455,22 @@ class LLMService {
   }
 
   async sendMessageWithHistory(userMessage: string): Promise<LLMResponse> {
+    // 提取项目信息
+    this.extractProjectInfoFromText(userMessage);
+
     // 添加用户消息到历史
     this.conversationHistory.push({ role: 'user', content: userMessage });
-    
-    // 构建完整的消息列表（系统提示 + 历史）
+
+    // 构建增强的系统提示（包含记忆）
+    const memoryContext = this.buildMemoryContext();
+    const enhancedSystemPrompt = memoryContext 
+      ? `${this.systemPrompt}\n\n## 记忆上下文\n${memoryContext}`
+      : this.systemPrompt;
+
+    // 构建完整的消息列表
     const allMessages: LLMMessage[] = [
-      { role: 'system', content: this.systemPrompt },
-      ...this.conversationHistory,
+      { role: 'system', content: enhancedSystemPrompt },
+      ...this.conversationHistory.slice(-20), // 保留最近20条
     ];
 
     const response = await this.currentProvider.sendMessage(allMessages, this.config);
@@ -354,9 +478,52 @@ class LLMService {
     // 添加助手回复到历史
     if (response.success && response.content) {
       this.conversationHistory.push({ role: 'assistant', content: response.content });
+      
+      // 从回复中提取关键信息存入记忆
+      this.extractAndStoreKeyInfo(response.content);
     }
 
     return response;
+  }
+
+  private buildMemoryContext(): string {
+    const contexts: string[] = [];
+
+    // 项目上下文
+    if (Object.keys(this.projectContext).length > 0) {
+      contexts.push(`【当前项目】\n${this.getProjectContextSummary()}`);
+    }
+
+    // 高重要性记忆块
+    const importantMemories = this.memoryBlocks
+      .filter(b => b.importance >= 7)
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 5);
+
+    if (importantMemories.length > 0) {
+      contexts.push(`【重要记忆】\n${importantMemories.map(b => `- ${b.content}`).join('\n')}`);
+    }
+
+    return contexts.join('\n\n');
+  }
+
+  private extractAndStoreKeyInfo(content: string): void {
+    // 从回复中提取关键决策和结论
+    const keyPatterns = [
+      /已确认[：:]\s*([^。\n]+)/gi,
+      /项目[名称类型风格][：:]\s*["']?([^"'。\n]+)["']?/gi,
+      /决定[：:]\s*([^。\n]+)/gi,
+    ];
+
+    for (const pattern of keyPatterns) {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const info = match[1].trim();
+        if (info.length > 5 && info.length < 100) {
+          this.addMemoryBlock('key_decision', info, 6);
+        }
+      }
+    }
   }
 
   getConversationHistory(): LLMMessage[] {
